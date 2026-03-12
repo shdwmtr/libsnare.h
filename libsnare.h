@@ -914,7 +914,7 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
   hook->relay_size = 0;
   hook->relay_jmp = NULL;
 #endif
-  if ((hook->code = malloc(JMP_INSN_LEN)) == NULL)
+  if ((hook->code = (uint8_t *)malloc(JMP_INSN_LEN)) == NULL)
   {
     free(hook);
     return NULL;
@@ -939,7 +939,7 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
     if (hook->relay_page == NULL)
     {
       /* fallback: calloc trampoline (may not work for far jumps) */
-      hook->trampoline = calloc(1, MAX_TRAMPOLINE_LEN);
+      hook->trampoline = (void *)calloc(1, MAX_TRAMPOLINE_LEN);
       if (hook->trampoline == NULL)
       {
         free(hook->code);
@@ -970,7 +970,7 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
   }
 #else
   /* x86 / arm64: simple allocation */
-  if ((hook->trampoline = calloc(1, MAX_TRAMPOLINE_LEN)) == NULL)
+  if ((hook->trampoline = (void *)calloc(1, MAX_TRAMPOLINE_LEN)) == NULL)
   {
     free(hook->code);
     free(hook);
@@ -1001,12 +1001,12 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
   }
 
   {
-    int near = 0;
+    int is_near = 0;
 #ifdef SNARE_X86_64
-    near = (hook->relay_page != NULL);
+    is_near = (hook->relay_page != NULL);
 #endif
     if (snare_make_trampoline((uint8_t *)hook->trampoline,
-                              (uint8_t *)hook->src, near, hook) == 0)
+                              (uint8_t *)hook->src, is_near, hook) == 0)
     {
       hook->trampoline = NULL;
     }
@@ -2204,7 +2204,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
     return SNARE_PLT_INTERNAL_ERROR;
   }
 
-  *plthook_out = malloc(sizeof(snare_plt_t));
+  *plthook_out = (snare_plt_t *)malloc(sizeof(snare_plt_t));
   if (*plthook_out == NULL)
   {
     snare_plt_set_errmsg("failed to allocate memory: %" SNARE_PLT_SIZE_T_FMT
@@ -2597,7 +2597,7 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
   *plthook_out = NULL;
   if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT |
                               GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                          address, &hMod))
+                          (LPCSTR)address, &hMod))
   {
     snare_plt_set_errmsg2("Cannot get module at address %p: ", address);
     return SNARE_PLT_FILE_NOT_FOUND;
@@ -2719,7 +2719,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
       }
     }
   }
-  plthook = calloc(1, offsetof(snare_plt_t, entries) +
+  plthook = (snare_plt_t *)calloc(1, offsetof(snare_plt_t, entries) +
                           sizeof(snare_plt_import_entry_t) * num_entries +
                           ordinal_name_buflen);
   if (plthook == NULL)
