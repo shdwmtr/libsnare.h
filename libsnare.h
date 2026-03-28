@@ -106,8 +106,10 @@ SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook);
 SNARE_EXPORT int SNARE_API snare_inline_is_installed(snare_inline_t hook);
 SNARE_EXPORT int SNARE_API snare_inline_remove(snare_inline_t hook);
 /* batch install/remove with a single thread-freeze cycle */
-SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks, int count);
-SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks, int count);
+SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks,
+                                                      int count);
+SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks,
+                                                     int count);
 /* read jmp target from existing hook */
 SNARE_EXPORT void *SNARE_API snare_inline_read_dst(void *src);
 
@@ -144,8 +146,7 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
                                                     void ***addr_out,
                                                     int *prot);
 
-typedef struct
-{
+typedef struct {
   const char *name;
   void **addr;
 #ifdef SNARE_MACOS
@@ -160,13 +161,11 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
                                                 snare_plt_entry_t *entry);
 
 #ifdef __cplusplus
-class snare_inline
-{
+class snare_inline {
 public:
   snare_inline() : hook_(0) {}
   snare_inline(void *src, void *dst) : hook_(snare_inline_new(src, dst)) {}
-  ~snare_inline()
-  {
+  ~snare_inline() {
     snare_inline_remove(hook_);
     snare_inline_free(hook_);
   }
@@ -174,25 +173,20 @@ public:
   void *get_dst() { return snare_inline_get_dst(hook_); }
   void *get_trampoline() { return snare_inline_get_trampoline(hook_); }
   bool install() { return snare_inline_install(hook_) >= 0; }
-  bool install(void *src, void *dst)
-  {
-    if (hook_ == 0)
-    {
+  bool install(void *src, void *dst) {
+    if (hook_ == 0) {
       hook_ = snare_inline_new(src, dst);
     }
     return install();
   }
   bool remove() { return snare_inline_remove(hook_) >= 0; }
   bool is_installed() const { return !!snare_inline_is_installed(hook_); }
-  class scoped_remove
-  {
+  class scoped_remove {
   public:
     scoped_remove(snare_inline *hook)
         : hook_(hook), removed_(hook_->remove()) {}
-    ~scoped_remove()
-    {
-      if (removed_)
-      {
+    ~scoped_remove() {
+      if (removed_) {
         hook_->install();
       }
     }
@@ -205,15 +199,12 @@ public:
     snare_inline *hook_;
     bool removed_;
   };
-  class scoped_install
-  {
+  class scoped_install {
   public:
     scoped_install(snare_inline *hook)
         : hook_(hook), installed_(hook_->install()) {}
-    ~scoped_install()
-    {
-      if (installed_)
-      {
+    ~scoped_install() {
+      if (installed_) {
         hook_->remove();
       }
     }
@@ -235,40 +226,32 @@ private:
 private:
   snare_inline_t hook_;
 };
-class snare_plt
-{
+class snare_plt {
 public:
   snare_plt() : plt_(0) {}
   snare_plt(const char *filename) : plt_(0) { open(filename); }
   ~snare_plt() { close(); }
-  bool open(const char *filename)
-  {
+  bool open(const char *filename) {
     close();
     return snare_plt_open(&plt_, filename) == SNARE_PLT_SUCCESS;
   }
-  bool open_by_handle(void *handle)
-  {
+  bool open_by_handle(void *handle) {
     close();
     return snare_plt_open_by_handle(&plt_, handle) == SNARE_PLT_SUCCESS;
   }
-  bool open_by_address(void *address)
-  {
+  bool open_by_address(void *address) {
     close();
     return snare_plt_open_by_address(&plt_, address) == SNARE_PLT_SUCCESS;
   }
-  int enum_next(unsigned int *pos, const char **name, void ***addr)
-  {
+  int enum_next(unsigned int *pos, const char **name, void ***addr) {
     return snare_plt_enum(plt_, pos, name, addr);
   }
-  bool replace(const char *funcname, void *funcaddr, void **oldfunc)
-  {
+  bool replace(const char *funcname, void *funcaddr, void **oldfunc) {
     return snare_plt_replace(plt_, funcname, funcaddr, oldfunc) ==
            SNARE_PLT_SUCCESS;
   }
-  void close()
-  {
-    if (plt_)
-    {
+  void close() {
+    if (plt_) {
       snare_plt_close(plt_);
       plt_ = 0;
     }
@@ -307,20 +290,20 @@ typedef __int32 intptr_t;
 #endif
 #endif
 #ifdef SNARE_WINDOWS
-#include <windows.h>
 #include <tlhelp32.h>
+#include <windows.h>
 #endif
 
 #define SNARE_MAX_IPS 8
 
-struct snare_inline_s
-{
+struct snare_inline_s {
   int installed;
   void *src;
   void *dst;
   void *code;
   void *trampoline;
-  size_t orig_size; /* number of bytes overwritten at src (copied to trampoline) */
+  size_t
+      orig_size; /* number of bytes overwritten at src (copied to trampoline) */
 #if defined SNARE_X86 || defined SNARE_X86_64
   uint8_t n_ips;                    /* instruction boundary count          */
   uint8_t orig_ips[SNARE_MAX_IPS];  /* offsets within original code        */
@@ -338,8 +321,7 @@ struct snare_inline_s
 #define JMP_INSN_LEN sizeof(struct snare_jmp_rel)
 #define MAX_INSN_LEN 15
 #pragma pack(push, 1)
-struct snare_jmp_rel
-{
+struct snare_jmp_rel {
   uint8_t opcode;
   int32_t offset;
 };
@@ -347,8 +329,7 @@ struct snare_jmp_rel
 #ifdef SNARE_X86_64
 /* x64: 14 byte absolute jmp (ff 25 00 00 00 00 + 8 byte addr) */
 #pragma pack(push, 1)
-struct snare_jmp_abs
-{
+struct snare_jmp_abs {
   uint8_t opcode[2]; /* FF 25 */
   int32_t zero;      /* 00 00 00 00 = [RIP+0] */
   uint64_t addr;
@@ -368,8 +349,7 @@ struct snare_jmp_abs
 #define MAX_INSN_LEN 4
 #define MAX_TRAMPOLINE_LEN (JMP_INSN_LEN + (MAX_INSN_LEN * 4))
 #pragma pack(push, 1)
-struct snare_jmp_rel
-{
+struct snare_jmp_rel {
   uint32_t ldr;
   uint32_t br;
   uint64_t addr;
@@ -377,8 +357,7 @@ struct snare_jmp_rel
 #pragma pack(pop)
 #endif
 
-static void *snare_unprotect(void *address, size_t size)
-{
+static void *snare_unprotect(void *address, size_t size) {
 #if defined SNARE_LINUX || defined SNARE_MACOS
   long pagesize;
   pagesize = sysconf(_SC_PAGESIZE);
@@ -400,16 +379,15 @@ static void *snare_unprotect(void *address, size_t size)
 
 #ifdef SNARE_X86_64
 /* check if two addresses are within signed 32-bit reach */
-static int snare_in_rel32_range(void *a, void *b)
-{
+static int snare_in_rel32_range(void *a, void *b) {
   intptr_t diff = (intptr_t)b - (intptr_t)a;
   return diff >= -0x7FFFFF00LL && diff <= 0x7FFFFF00LL;
 }
 /* allocate an executable page within ±2GB of target */
-static void *snare_alloc_near(void *target, size_t size)
-{
+static void *snare_alloc_near(void *target, size_t size) {
   uintptr_t addr = (uintptr_t)target;
-  uintptr_t lo = addr > (uintptr_t)0x80000000ULL ? addr - 0x80000000ULL : 0x10000ULL;
+  uintptr_t lo =
+      addr > (uintptr_t)0x80000000ULL ? addr - 0x80000000ULL : 0x10000ULL;
   uintptr_t hi = addr + 0x80000000ULL;
   if (hi < addr)
     hi = (uintptr_t)-1; /* overflow guard */
@@ -419,16 +397,16 @@ static void *snare_alloc_near(void *target, size_t size)
   uintptr_t gran = si.dwAllocationGranularity;
   uintptr_t try_addr;
   /* scan downward first (typically more address space below) */
-  for (try_addr = (addr & ~(gran - 1)) - gran; try_addr >= lo; try_addr -= gran)
-  {
+  for (try_addr = (addr & ~(gran - 1)) - gran; try_addr >= lo;
+       try_addr -= gran) {
     void *p = VirtualAlloc((void *)try_addr, size, MEM_COMMIT | MEM_RESERVE,
                            PAGE_EXECUTE_READWRITE);
     if (p)
       return p;
   }
   /* scan upward */
-  for (try_addr = (addr & ~(gran - 1)) + gran; try_addr <= hi; try_addr += gran)
-  {
+  for (try_addr = (addr & ~(gran - 1)) + gran; try_addr <= hi;
+       try_addr += gran) {
     void *p = VirtualAlloc((void *)try_addr, size, MEM_COMMIT | MEM_RESERVE,
                            PAGE_EXECUTE_READWRITE);
     if (p)
@@ -441,9 +419,8 @@ static void *snare_alloc_near(void *target, size_t size)
   uintptr_t page_mask = ~((uintptr_t)page_size - 1);
   uintptr_t try_addr;
   /* scan downward */
-  for (try_addr = (addr & page_mask) - (uintptr_t)page_size;
-       try_addr >= lo; try_addr -= (uintptr_t)page_size)
-  {
+  for (try_addr = (addr & page_mask) - (uintptr_t)page_size; try_addr >= lo;
+       try_addr -= (uintptr_t)page_size) {
     void *p = mmap((void *)try_addr, size, PROT_READ | PROT_WRITE | PROT_EXEC,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (p == MAP_FAILED)
@@ -453,9 +430,8 @@ static void *snare_alloc_near(void *target, size_t size)
     munmap(p, size);
   }
   /* scan upward */
-  for (try_addr = (addr & page_mask) + (uintptr_t)page_size;
-       try_addr <= hi; try_addr += (uintptr_t)page_size)
-  {
+  for (try_addr = (addr & page_mask) + (uintptr_t)page_size; try_addr <= hi;
+       try_addr += (uintptr_t)page_size) {
     void *p = mmap((void *)try_addr, size, PROT_READ | PROT_WRITE | PROT_EXEC,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (p == MAP_FAILED)
@@ -467,8 +443,7 @@ static void *snare_alloc_near(void *target, size_t size)
 #endif
   return NULL;
 }
-static void snare_free_near(void *addr, size_t size)
-{
+static void snare_free_near(void *addr, size_t size) {
 #ifdef SNARE_WINDOWS
   (void)size;
   VirtualFree(addr, 0, MEM_RELEASE);
@@ -476,8 +451,7 @@ static void snare_free_near(void *addr, size_t size)
   munmap(addr, size);
 #endif
 }
-static void snare_make_abs_jmp(void *where, void *target)
-{
+static void snare_make_abs_jmp(void *where, void *target) {
   struct snare_jmp_abs *j = (struct snare_jmp_abs *)where;
   j->opcode[0] = 0xFF;
   j->opcode[1] = 0x25;
@@ -576,8 +550,7 @@ static const uint8_t snare_op2[256] = {
 #undef _E
 #undef XX
 
-static size_t snare_disasm(uint8_t *code, int *reloc)
-{
+static size_t snare_disasm(uint8_t *code, int *reloc) {
   int len = 0;
   int operand_size = 4;
   int address_size = SNARE_BITS / 8;
@@ -586,24 +559,20 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
   uint8_t opcode, flags;
 
   /* consume legacy prefixes (up to 4 from different groups) */
-  for (;;)
-  {
+  for (;;) {
     uint8_t c = code[len];
-    if (c == 0xF0 || c == 0xF2 || c == 0xF3 ||              /* lock / repne / rep */
+    if (c == 0xF0 || c == 0xF2 || c == 0xF3 || /* lock / repne / rep */
         c == 0x2E || c == 0x36 || c == 0x3E || c == 0x26 || /* seg ovr */
-        c == 0x64 || c == 0x65)
-    { /* FS / GS */
+        c == 0x64 || c == 0x65) {                           /* FS / GS */
       len++;
       continue;
     }
-    if (c == 0x66)
-    {
+    if (c == 0x66) {
       operand_size = 2;
       len++;
       continue;
     }
-    if (c == 0x67)
-    {
+    if (c == 0x67) {
       address_size = SNARE_BITS / 8 / 2;
       len++;
       continue;
@@ -613,10 +582,8 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
 
 #ifdef SNARE_X86_64
   /* consume REX prefix (0x40-0x4F) */
-  if ((code[len] & 0xF0) == 0x40)
-  {
-    if (code[len] & 0x08)
-    {
+  if ((code[len] & 0xF0) == 0x40) {
+    if (code[len] & 0x08) {
       has_rex_w = 1;
       operand_size = 8;
     }
@@ -631,23 +598,18 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
   flags = snare_op1[opcode];
 
   /* 0F two-byte escape */
-  if (flags & SF_2B)
-  {
+  if (flags & SF_2B) {
     opcode = code[len++];
     /* 0F 38 xx: three-byte SSE4/AES/SHA — all ModR/M, no immediate */
-    if (opcode == 0x38)
-    {
+    if (opcode == 0x38) {
       len++; /* consume third opcode byte */
       flags = SF_M;
     }
     /* 0F 3A xx: three-byte SSE4/AVX — all ModR/M + imm8 */
-    else if (opcode == 0x3A)
-    {
+    else if (opcode == 0x3A) {
       len++; /* consume third opcode byte */
       flags = SF_M | SF_I8;
-    }
-    else
-    {
+    } else {
       flags = snare_op2[opcode];
     }
   }
@@ -656,8 +618,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
     return 0; /* unsupported opcode */
 
   /* special-case opcodes */
-  if (flags & SF_SP)
-  {
+  if (flags & SF_SP) {
     uint8_t op = code[opcode_offset];
     /* A0-A3: MOV moffs — immediate is address_size bytes */
     if (op >= 0xA0 && op <= 0xA3)
@@ -669,8 +630,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
     if (op == 0xC8)
       return len + 3;
     /* F6/F7: GRP3 — TEST (reg=0,1) has an immediate, others don't */
-    if (op == 0xF6 || op == 0xF7)
-    {
+    if (op == 0xF6 || op == 0xF7) {
       int modrm = code[len++];
       int mod = modrm >> 6, rm = modrm & 7, reg = (modrm >> 3) & 7;
       if (mod != 3 && rm == 4)
@@ -687,8 +647,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
   }
 
   /* ModR/M + SIB + displacement */
-  if (flags & SF_M)
-  {
+  if (flags & SF_M) {
     int modrm = code[len++];
     int mod = modrm >> 6, rm = modrm & 7;
     if (mod != 3 && rm == 4)
@@ -709,8 +668,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
     len += 1;
   if (flags & SF_R8)
     len += 1;
-  if (flags & SF_IV)
-  {
+  if (flags & SF_IV) {
 #ifdef SNARE_X86_64
     /* movabs r64, imm64: REX.W + B8+r */
     if (has_rex_w && (code[opcode_offset] & 0xF8) == 0xB8)
@@ -719,8 +677,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
 #endif
       len += (operand_size == 2) ? 2 : 4;
   }
-  if (flags & SF_RV)
-  {
+  if (flags & SF_RV) {
     if (reloc)
       *reloc = len;
     len += (operand_size == 2) ? 2 : 4;
@@ -730,8 +687,7 @@ static size_t snare_disasm(uint8_t *code, int *reloc)
 }
 #endif /* SNARE_X86 || SNARE_X86_64 */
 
-static size_t snare_make_rel_jmp(uint8_t *src, uint8_t *dst, size_t offset)
-{
+static size_t snare_make_rel_jmp(uint8_t *src, uint8_t *dst, size_t offset) {
   struct snare_jmp_rel *jmp = (struct snare_jmp_rel *)(src + offset);
 #if defined SNARE_X86 || defined SNARE_X86_64
   jmp->opcode = JMP_INSN_OPCODE;
@@ -746,22 +702,18 @@ static size_t snare_make_rel_jmp(uint8_t *src, uint8_t *dst, size_t offset)
 
 /* scan past prefix bytes in an instruction to find the opcode */
 #if defined SNARE_X86 || defined SNARE_X86_64
-static int snare_skip_prefixes(uint8_t *insn, int insn_len)
-{
+static int snare_skip_prefixes(uint8_t *insn, int insn_len) {
   int p = 0;
-  while (p < insn_len)
-  {
+  while (p < insn_len) {
     uint8_t c = insn[p];
-    if (c == 0xF0 || c == 0xF2 || c == 0xF3 ||
-        c == 0x2E || c == 0x36 || c == 0x3E || c == 0x26 ||
-        c == 0x64 || c == 0x65 || c == 0x66 || c == 0x67)
-    {
+    if (c == 0xF0 || c == 0xF2 || c == 0xF3 || c == 0x2E || c == 0x36 ||
+        c == 0x3E || c == 0x26 || c == 0x64 || c == 0x65 || c == 0x66 ||
+        c == 0x67) {
       p++;
       continue;
     }
 #ifdef SNARE_X86_64
-    if ((c & 0xF0) == 0x40)
-    {
+    if ((c & 0xF0) == 0x40) {
       p++;
       continue;
     } /* REX */
@@ -773,24 +725,20 @@ static int snare_skip_prefixes(uint8_t *insn, int insn_len)
 #endif
 
 static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
-                                    int near_allocated,
-                                    snare_inline_t hook)
-{
+                                    int near_allocated, snare_inline_t hook) {
   size_t orig_size = 0;
 #if defined SNARE_X86 || defined SNARE_X86_64
   size_t tramp_size = 0;
   if (hook)
     hook->n_ips = 0;
-  while (orig_size < JMP_INSN_LEN)
-  {
+  while (orig_size < JMP_INSN_LEN) {
     int reloc = 0;
     size_t insn_len = snare_disasm(src + orig_size, &reloc);
     if (insn_len == 0)
       return 0;
 
     /* record instruction boundary mapping */
-    if (hook && hook->n_ips < SNARE_MAX_IPS)
-    {
+    if (hook && hook->n_ips < SNARE_MAX_IPS) {
       hook->orig_ips[hook->n_ips] = (uint8_t)orig_size;
       hook->tramp_ips[hook->n_ips] = (uint8_t)tramp_size;
       hook->n_ips++;
@@ -801,8 +749,7 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
     uint8_t op = insn[pfx];
 
     /* short branch expansion */
-    if (op == 0xEB && pfx + 2 == (int)insn_len)
-    {
+    if (op == 0xEB && pfx + 2 == (int)insn_len) {
       /* JMP short rel8 → JMP near rel32 (EB xx → E9 xx xx xx xx) */
       int8_t rel8 = (int8_t)insn[pfx + 1];
       intptr_t target = (intptr_t)(src + orig_size + insn_len) + rel8;
@@ -819,8 +766,7 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
       orig_size += insn_len;
       continue;
     }
-    if (op >= 0x70 && op <= 0x7F && pfx + 2 == (int)insn_len)
-    {
+    if (op >= 0x70 && op <= 0x7F && pfx + 2 == (int)insn_len) {
       /* Jcc short rel8 → Jcc near rel32 (7x xx → 0F 8x xx xx xx xx) */
       int8_t rel8 = (int8_t)insn[pfx + 1];
       intptr_t target = (intptr_t)(src + orig_size + insn_len) + rel8;
@@ -841,11 +787,11 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
 
     /* regular instruction copy */
     memcpy(trampoline + tramp_size, insn, insn_len);
-    if (reloc > 0)
-    {
+    if (reloc > 0) {
       /* adjust relative displacement (RIP-relative or CALL/JMP rel32) */
       int32_t *disp = (int32_t *)(trampoline + tramp_size + reloc);
-      intptr_t adj = (intptr_t)(src + orig_size) - (intptr_t)(trampoline + tramp_size);
+      intptr_t adj =
+          (intptr_t)(src + orig_size) - (intptr_t)(trampoline + tramp_size);
       intptr_t new_disp = (intptr_t)*disp + adj;
 #ifdef SNARE_X86_64
       /* displacement overflow check */
@@ -858,8 +804,7 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
     orig_size += insn_len;
   }
   /* record the "end" boundary so IP at the end of the region maps correctly */
-  if (hook && hook->n_ips < SNARE_MAX_IPS)
-  {
+  if (hook && hook->n_ips < SNARE_MAX_IPS) {
     hook->orig_ips[hook->n_ips] = (uint8_t)orig_size;
     hook->tramp_ips[hook->n_ips] = (uint8_t)tramp_size;
     hook->n_ips++;
@@ -867,26 +812,23 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
   if (hook)
     hook->orig_size = orig_size;
 #ifdef SNARE_X86_64
-  if (near_allocated)
-  {
+  if (near_allocated) {
     return tramp_size +
            snare_make_rel_jmp(trampoline, src + orig_size, tramp_size);
-  }
-  else
-  {
+  } else {
     snare_make_abs_jmp(trampoline + tramp_size, src + orig_size);
     return tramp_size + ABS_JMP_LEN;
   }
 #else
   (void)near_allocated;
-  return tramp_size + snare_make_rel_jmp(trampoline, src + orig_size, tramp_size);
+  return tramp_size +
+         snare_make_rel_jmp(trampoline, src + orig_size, tramp_size);
 #endif
 #elif defined SNARE_ARM64
   (void)near_allocated;
   memcpy(trampoline, src, JMP_INSN_LEN);
   orig_size = JMP_INSN_LEN;
-  if (hook)
-  {
+  if (hook) {
     hook->orig_size = orig_size;
     hook->n_ips = 0;
   }
@@ -895,8 +837,7 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
 #endif
 }
 
-SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
-{
+SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst) {
   snare_inline_t hook;
   if ((hook = (snare_inline_t)malloc(sizeof(*hook))) == NULL)
     return NULL;
@@ -914,8 +855,7 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
   hook->relay_size = 0;
   hook->relay_jmp = NULL;
 #endif
-  if ((hook->code = (uint8_t *)malloc(JMP_INSN_LEN)) == NULL)
-  {
+  if ((hook->code = (uint8_t *)malloc(JMP_INSN_LEN)) == NULL) {
     free(hook);
     return NULL;
   }
@@ -936,48 +876,39 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
 #endif
     hook->relay_size = page_size;
     hook->relay_page = snare_alloc_near(src, page_size);
-    if (hook->relay_page == NULL)
-    {
+    if (hook->relay_page == NULL) {
       /* fallback: calloc trampoline (may not work for far jumps) */
       hook->trampoline = (void *)calloc(1, MAX_TRAMPOLINE_LEN);
-      if (hook->trampoline == NULL)
-      {
+      if (hook->trampoline == NULL) {
         free(hook->code);
         free(hook);
         return NULL;
       }
-      if (snare_unprotect(hook->trampoline, MAX_TRAMPOLINE_LEN) == NULL)
-      {
+      if (snare_unprotect(hook->trampoline, MAX_TRAMPOLINE_LEN) == NULL) {
         free(hook->trampoline);
         free(hook->code);
         free(hook);
         return NULL;
       }
-    }
-    else
-    {
+    } else {
       memset(hook->relay_page, 0, page_size);
       /* trampoline is at the start of the relay page */
       hook->trampoline = hook->relay_page;
       /* if dst is too far for rel32 from src, set up an abs relay jump */
-      if (!snare_in_rel32_range(src, dst))
-      {
-        hook->relay_jmp =
-            (uint8_t *)hook->relay_page + MAX_TRAMPOLINE_LEN;
+      if (!snare_in_rel32_range(src, dst)) {
+        hook->relay_jmp = (uint8_t *)hook->relay_page + MAX_TRAMPOLINE_LEN;
         snare_make_abs_jmp(hook->relay_jmp, dst);
       }
     }
   }
 #else
   /* x86 / arm64: simple allocation */
-  if ((hook->trampoline = (void *)calloc(1, MAX_TRAMPOLINE_LEN)) == NULL)
-  {
+  if ((hook->trampoline = (void *)calloc(1, MAX_TRAMPOLINE_LEN)) == NULL) {
     free(hook->code);
     free(hook);
     return NULL;
   }
-  if (snare_unprotect(hook->trampoline, MAX_TRAMPOLINE_LEN) == NULL)
-  {
+  if (snare_unprotect(hook->trampoline, MAX_TRAMPOLINE_LEN) == NULL) {
     free(hook->trampoline);
     free(hook->code);
     free(hook);
@@ -985,8 +916,7 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
   }
 #endif
 
-  if (snare_unprotect(hook->src, JMP_INSN_LEN) == NULL)
-  {
+  if (snare_unprotect(hook->src, JMP_INSN_LEN) == NULL) {
 #ifdef SNARE_X86_64
     if (hook->relay_page)
       snare_free_near(hook->relay_page, hook->relay_size);
@@ -1005,22 +935,19 @@ SNARE_EXPORT snare_inline_t SNARE_API snare_inline_new(void *src, void *dst)
 #ifdef SNARE_X86_64
     is_near = (hook->relay_page != NULL);
 #endif
-    if (snare_make_trampoline((uint8_t *)hook->trampoline,
-                              (uint8_t *)hook->src, is_near, hook) == 0)
-    {
+    if (snare_make_trampoline((uint8_t *)hook->trampoline, (uint8_t *)hook->src,
+                              is_near, hook) == 0) {
       hook->trampoline = NULL;
     }
   }
 #if defined SNARE_ARM64 && defined SNARE_MACOS
-  if (hook->trampoline)
-  {
+  if (hook->trampoline) {
     sys_icache_invalidate(hook->trampoline, MAX_TRAMPOLINE_LEN);
   }
 #endif
   return hook;
 }
-SNARE_EXPORT void SNARE_API snare_inline_free(snare_inline_t hook)
-{
+SNARE_EXPORT void SNARE_API snare_inline_free(snare_inline_t hook) {
   if (hook == NULL)
     return;
 #ifdef SNARE_X86_64
@@ -1034,35 +961,29 @@ SNARE_EXPORT void SNARE_API snare_inline_free(snare_inline_t hook)
   free(hook->code);
   free(hook);
 }
-SNARE_EXPORT void *SNARE_API snare_inline_get_trampoline(snare_inline_t hook)
-{
+SNARE_EXPORT void *SNARE_API snare_inline_get_trampoline(snare_inline_t hook) {
   return hook->trampoline;
 }
-SNARE_EXPORT void *SNARE_API snare_inline_get_src(snare_inline_t hook)
-{
+SNARE_EXPORT void *SNARE_API snare_inline_get_src(snare_inline_t hook) {
   return hook->src;
 }
-SNARE_EXPORT void *SNARE_API snare_inline_get_dst(snare_inline_t hook)
-{
+SNARE_EXPORT void *SNARE_API snare_inline_get_dst(snare_inline_t hook) {
   return hook->dst;
 }
 
-SNARE_EXPORT int SNARE_API snare_inline_is_installed(snare_inline_t hook)
-{
+SNARE_EXPORT int SNARE_API snare_inline_is_installed(snare_inline_t hook) {
   return hook->installed;
 }
 
 /* Thread safety: freeze / thaw other threads during patch */
 #ifdef SNARE_WINDOWS
-typedef struct
-{
+typedef struct {
   HANDLE *handles;
   size_t count;
   size_t capacity;
 } snare_frozen_threads_t;
 
-static void snare_freeze_threads(snare_frozen_threads_t *ft)
-{
+static void snare_freeze_threads(snare_frozen_threads_t *ft) {
   HANDLE hSnapshot;
   THREADENTRY32 te;
   DWORD pid = GetCurrentProcessId();
@@ -1077,25 +998,19 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft)
     return;
 
   te.dwSize = sizeof(te);
-  if (Thread32First(hSnapshot, &te))
-  {
-    do
-    {
-      if (te.th32OwnerProcessID == pid && te.th32ThreadID != tid)
-      {
-        HANDLE hThread = OpenThread(
-            THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_SET_CONTEXT,
-            FALSE, te.th32ThreadID);
-        if (hThread)
-        {
-          if (SuspendThread(hThread) != (DWORD)-1)
-          {
-            if (ft->count >= ft->capacity)
-            {
+  if (Thread32First(hSnapshot, &te)) {
+    do {
+      if (te.th32OwnerProcessID == pid && te.th32ThreadID != tid) {
+        HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT |
+                                        THREAD_SET_CONTEXT,
+                                    FALSE, te.th32ThreadID);
+        if (hThread) {
+          if (SuspendThread(hThread) != (DWORD)-1) {
+            if (ft->count >= ft->capacity) {
               size_t new_cap = ft->capacity ? ft->capacity * 2 : 16;
-              HANDLE *buf = (HANDLE *)realloc(ft->handles, new_cap * sizeof(HANDLE));
-              if (!buf)
-              {
+              HANDLE *buf =
+                  (HANDLE *)realloc(ft->handles, new_cap * sizeof(HANDLE));
+              if (!buf) {
                 ResumeThread(hThread);
                 CloseHandle(hThread);
                 continue;
@@ -1104,9 +1019,7 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft)
               ft->capacity = new_cap;
             }
             ft->handles[ft->count++] = hThread;
-          }
-          else
-          {
+          } else {
             CloseHandle(hThread);
           }
         }
@@ -1116,11 +1029,9 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft)
   CloseHandle(hSnapshot);
 }
 
-static void snare_thaw_threads(snare_frozen_threads_t *ft)
-{
+static void snare_thaw_threads(snare_frozen_threads_t *ft) {
   size_t i;
-  for (i = 0; i < ft->count; i++)
-  {
+  for (i = 0; i < ft->count; i++) {
     ResumeThread(ft->handles[i]);
     CloseHandle(ft->handles[i]);
   }
@@ -1133,12 +1044,10 @@ static void snare_thaw_threads(snare_frozen_threads_t *ft)
 static void snare_adjust_threads_ip(snare_frozen_threads_t *ft,
                                     uintptr_t from_base, uintptr_t to_base,
                                     uint8_t *from_ips, uint8_t *to_ips,
-                                    uint8_t n_ips)
-{
+                                    uint8_t n_ips) {
   size_t i;
   uint8_t j;
-  for (i = 0; i < ft->count; i++)
-  {
+  for (i = 0; i < ft->count; i++) {
     CONTEXT ctx;
     ctx.ContextFlags = CONTEXT_CONTROL;
     if (!GetThreadContext(ft->handles[i], &ctx))
@@ -1148,10 +1057,8 @@ static void snare_adjust_threads_ip(snare_frozen_threads_t *ft,
 #else
     uintptr_t ip = (uintptr_t)ctx.Eip;
 #endif
-    for (j = 0; j < n_ips; j++)
-    {
-      if (ip == from_base + from_ips[j])
-      {
+    for (j = 0; j < n_ips; j++) {
+      if (ip == from_base + from_ips[j]) {
 #if defined SNARE_X86_64 || defined _M_AMD64
         ctx.Rip = (DWORD64)(to_base + to_ips[j]);
 #else
@@ -1166,15 +1073,11 @@ static void snare_adjust_threads_ip(snare_frozen_threads_t *ft,
 #endif /* SNARE_WINDOWS */
 
 /* internal: write the hook jump (shared by install and batch) */
-static void snare_write_hook_jmp(snare_inline_t hook)
-{
+static void snare_write_hook_jmp(snare_inline_t hook) {
 #ifdef SNARE_X86_64
-  if (hook->relay_jmp)
-  {
+  if (hook->relay_jmp) {
     snare_make_rel_jmp((uint8_t *)hook->src, (uint8_t *)hook->relay_jmp, 0);
-  }
-  else
-  {
+  } else {
     snare_make_rel_jmp((uint8_t *)hook->src, (uint8_t *)hook->dst, 0);
   }
 #else
@@ -1182,8 +1085,7 @@ static void snare_write_hook_jmp(snare_inline_t hook)
 #endif
 }
 
-SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook)
-{
+SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook) {
   if (hook->installed)
     return -EINVAL;
 
@@ -1191,9 +1093,9 @@ SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook)
   snare_frozen_threads_t ft;
   snare_freeze_threads(&ft);
 #if defined SNARE_X86 || defined SNARE_X86_64
-  snare_adjust_threads_ip(&ft,
-                          (uintptr_t)hook->src, (uintptr_t)hook->trampoline,
-                          hook->orig_ips, hook->tramp_ips, hook->n_ips);
+  snare_adjust_threads_ip(&ft, (uintptr_t)hook->src,
+                          (uintptr_t)hook->trampoline, hook->orig_ips,
+                          hook->tramp_ips, hook->n_ips);
 #endif
 #endif
 
@@ -1209,8 +1111,7 @@ SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook)
 #endif
   return 0;
 }
-SNARE_EXPORT int SNARE_API snare_inline_remove(snare_inline_t hook)
-{
+SNARE_EXPORT int SNARE_API snare_inline_remove(snare_inline_t hook) {
   if (!hook->installed)
     return -EINVAL;
 
@@ -1218,9 +1119,9 @@ SNARE_EXPORT int SNARE_API snare_inline_remove(snare_inline_t hook)
   snare_frozen_threads_t ft;
   snare_freeze_threads(&ft);
 #if defined SNARE_X86 || defined SNARE_X86_64
-  snare_adjust_threads_ip(&ft,
-                          (uintptr_t)hook->trampoline, (uintptr_t)hook->src,
-                          hook->tramp_ips, hook->orig_ips, hook->n_ips);
+  snare_adjust_threads_ip(&ft, (uintptr_t)hook->trampoline,
+                          (uintptr_t)hook->src, hook->tramp_ips, hook->orig_ips,
+                          hook->n_ips);
 #endif
 #endif
 
@@ -1235,20 +1136,19 @@ SNARE_EXPORT int SNARE_API snare_inline_remove(snare_inline_t hook)
 }
 
 /* Batch install/remove: single freeze/thaw for multiple hooks */
-SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks, int count)
-{
+SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks,
+                                                      int count) {
   int i, installed = 0;
 #ifdef SNARE_WINDOWS
   snare_frozen_threads_t ft;
   snare_freeze_threads(&ft);
-  for (i = 0; i < count; i++)
-  {
+  for (i = 0; i < count; i++) {
     if (!hooks[i] || hooks[i]->installed)
       continue;
 #if defined SNARE_X86 || defined SNARE_X86_64
-    snare_adjust_threads_ip(&ft,
-                            (uintptr_t)hooks[i]->src, (uintptr_t)hooks[i]->trampoline,
-                            hooks[i]->orig_ips, hooks[i]->tramp_ips, hooks[i]->n_ips);
+    snare_adjust_threads_ip(&ft, (uintptr_t)hooks[i]->src,
+                            (uintptr_t)hooks[i]->trampoline, hooks[i]->orig_ips,
+                            hooks[i]->tramp_ips, hooks[i]->n_ips);
 #endif
     snare_write_hook_jmp(hooks[i]);
     hooks[i]->installed = 1;
@@ -1257,8 +1157,7 @@ SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks, int
   }
   snare_thaw_threads(&ft);
 #else
-  for (i = 0; i < count; i++)
-  {
+  for (i = 0; i < count; i++) {
     if (!hooks[i] || hooks[i]->installed)
       continue;
     snare_write_hook_jmp(hooks[i]);
@@ -1269,20 +1168,19 @@ SNARE_EXPORT int SNARE_API snare_inline_install_batch(snare_inline_t *hooks, int
   return installed;
 }
 
-SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks, int count)
-{
+SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks,
+                                                     int count) {
   int i, removed = 0;
 #ifdef SNARE_WINDOWS
   snare_frozen_threads_t ft;
   snare_freeze_threads(&ft);
-  for (i = 0; i < count; i++)
-  {
+  for (i = 0; i < count; i++) {
     if (!hooks[i] || !hooks[i]->installed)
       continue;
 #if defined SNARE_X86 || defined SNARE_X86_64
-    snare_adjust_threads_ip(&ft,
-                            (uintptr_t)hooks[i]->trampoline, (uintptr_t)hooks[i]->src,
-                            hooks[i]->tramp_ips, hooks[i]->orig_ips, hooks[i]->n_ips);
+    snare_adjust_threads_ip(&ft, (uintptr_t)hooks[i]->trampoline,
+                            (uintptr_t)hooks[i]->src, hooks[i]->tramp_ips,
+                            hooks[i]->orig_ips, hooks[i]->n_ips);
 #endif
     memcpy(hooks[i]->src, hooks[i]->code, JMP_INSN_LEN);
     hooks[i]->installed = 0;
@@ -1291,8 +1189,7 @@ SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks, int 
   }
   snare_thaw_threads(&ft);
 #else
-  for (i = 0; i < count; i++)
-  {
+  for (i = 0; i < count; i++) {
     if (!hooks[i] || !hooks[i]->installed)
       continue;
     memcpy(hooks[i]->src, hooks[i]->code, JMP_INSN_LEN);
@@ -1302,8 +1199,7 @@ SNARE_EXPORT int SNARE_API snare_inline_remove_batch(snare_inline_t *hooks, int 
 #endif
   return removed;
 }
-SNARE_EXPORT void *SNARE_API snare_inline_read_dst(void *src)
-{
+SNARE_EXPORT void *SNARE_API snare_inline_read_dst(void *src) {
 #if defined SNARE_X86 || defined SNARE_X86_64
   struct snare_jmp_rel *maybe_jmp = (struct snare_jmp_rel *)src;
   if (maybe_jmp->opcode != JMP_INSN_OPCODE)
@@ -1394,15 +1290,15 @@ SNARE_EXPORT void *SNARE_API snare_inline_read_dst(void *src)
     && defined __mips__
 #define R_JUMP_SLOT R_MIPS_JUMP_SLOT
 #define R_GLOBAL_DATA R_MIPS_GLOB_DAT
-#elif 0 /* disabled because not tested */ && \
+#elif 0 /* disabled because not tested */ &&                                   \
     (defined __sparc || defined __sparc__)
 #define R_JUMP_SLOT R_SPARC_JMP_SLOT
 #define R_GLOBAL_DATA R_SPARC_GLOB_DAT
-#elif 0 /* disabled because not tested */ && \
+#elif 0 /* disabled because not tested */ &&                                   \
     (defined __sparcv9 || defined __sparc_v9__)
 #define R_JUMP_SLOT R_SPARC_JMP_SLOT
 #define R_GLOBAL_DATA R_SPARC_GLOB_DAT
-#elif 0 /* disabled because not tested */ && \
+#elif 0 /* disabled because not tested */ &&                                   \
     (defined __ia64 || defined __ia64__)
 #define R_JUMP_SLOT R_IA64_IPLTMSB
 #else
@@ -1484,16 +1380,14 @@ SNARE_EXPORT void *SNARE_API snare_inline_read_dst(void *src)
 #else
 #define SNARE_PLT_DEBUG_MSG(...)
 #endif
-typedef struct snare_plt_mem_prot
-{
+typedef struct snare_plt_mem_prot {
   size_t start;
   size_t end;
   int prot;
 } snare_plt_mem_prot_t;
 
 #define SNARE_PLT_NUM_MEM_PROT 20
-struct snare_plt_s
-{
+struct snare_plt_s {
   const Snare_Elf_Sym *dynsym;
   const char *dynstr;
   size_t dynstr_size;
@@ -1508,7 +1402,7 @@ struct snare_plt_s
 };
 static char snare_plt_errmsg[512];
 static size_t snare_plt_page_size;
-#define SNARE_PLT_ALIGN_ADDR(addr) \
+#define SNARE_PLT_ALIGN_ADDR(addr)                                             \
   ((void *)((size_t)(addr) & ~(snare_plt_page_size - 1)))
 
 static int snare_plt_open_executable(snare_plt_t **plthook_out);
@@ -1534,36 +1428,29 @@ static void snare_plt_set_errmsg(const char *fmt, ...)
     __attribute__((__format__(__printf__, 1, 2)));
 
 #if defined __ANDROID__ || defined __UCLIBC__
-struct snare_plt_dl_iterate_data
-{
+struct snare_plt_dl_iterate_data {
   char *addr;
   struct link_map lmap;
 };
 static int snare_plt_dl_iterate_cb(struct dl_phdr_info *info, size_t size,
-                                   void *cb_data)
-{
+                                   void *cb_data) {
   struct snare_plt_dl_iterate_data *data =
       (struct snare_plt_dl_iterate_data *)cb_data;
   Snare_Elf_Half idx = 0;
 
-  for (idx = 0; idx < info->dlpi_phnum; ++idx)
-  {
+  for (idx = 0; idx < info->dlpi_phnum; ++idx) {
     const Snare_Elf_Phdr *phdr = &info->dlpi_phdr[idx];
     char *base = (char *)info->dlpi_addr + phdr->p_vaddr;
-    if (base <= data->addr && data->addr < base + phdr->p_memsz)
-    {
+    if (base <= data->addr && data->addr < base + phdr->p_memsz) {
       break;
     }
   }
-  if (idx == info->dlpi_phnum)
-  {
+  if (idx == info->dlpi_phnum) {
     return 0;
   }
-  for (idx = 0; idx < info->dlpi_phnum; ++idx)
-  {
+  for (idx = 0; idx < info->dlpi_phnum; ++idx) {
     const Snare_Elf_Phdr *phdr = &info->dlpi_phdr[idx];
-    if (phdr->p_type == PT_DYNAMIC)
-    {
+    if (phdr->p_type == PT_DYNAMIC) {
       data->lmap.l_addr = info->dlpi_addr;
       data->lmap.l_ld = (Snare_Elf_Dyn *)(info->dlpi_addr + phdr->p_vaddr);
       return 1;
@@ -1579,8 +1466,7 @@ static int snare_plt_dl_iterate_cb(struct dl_phdr_info *info, size_t size,
  * Google Sanitizers (ASan) and is portable across different libc
  * implementations (glibc, bionic, musl).
  */
-struct snare_plt_dl_iterate_exe_data
-{
+struct snare_plt_dl_iterate_exe_data {
   struct link_map lmap;
   char exe_path[PATH_MAX];
   size_t exe_path_len;
@@ -1588,36 +1474,29 @@ struct snare_plt_dl_iterate_exe_data
 };
 static int
 snare_plt_dl_iterate_exe_check(const char *name,
-                               struct snare_plt_dl_iterate_exe_data *data)
-{
-  if (name == NULL || name[0] == '\0')
-  {
+                               struct snare_plt_dl_iterate_exe_data *data) {
+  if (name == NULL || name[0] == '\0') {
     return 1;
   }
 
-  if (strncmp(name, data->exe_path, data->exe_path_len) == 0)
-  {
+  if (strncmp(name, data->exe_path, data->exe_path_len) == 0) {
     return 1;
   }
 
   return 0;
 }
 static int snare_plt_dl_iterate_exe_cb(struct dl_phdr_info *info, size_t size,
-                                       void *cb_data)
-{
+                                       void *cb_data) {
   struct snare_plt_dl_iterate_exe_data *data =
       (struct snare_plt_dl_iterate_exe_data *)cb_data;
   Snare_Elf_Half idx;
-  if (!snare_plt_dl_iterate_exe_check(info->dlpi_name, data))
-  {
+  if (!snare_plt_dl_iterate_exe_check(info->dlpi_name, data)) {
     return 0;
   }
   /* Found the main executable, extract its link_map info */
-  for (idx = 0; idx < info->dlpi_phnum; ++idx)
-  {
+  for (idx = 0; idx < info->dlpi_phnum; ++idx) {
     const Snare_Elf_Phdr *phdr = &info->dlpi_phdr[idx];
-    if (phdr->p_type == PT_DYNAMIC)
-    {
+    if (phdr->p_type == PT_DYNAMIC) {
       data->lmap.l_addr = info->dlpi_addr;
       data->lmap.l_ld = (Snare_Elf_Dyn *)(info->dlpi_addr + phdr->p_vaddr);
       data->found = 1;
@@ -1627,15 +1506,13 @@ static int snare_plt_dl_iterate_exe_cb(struct dl_phdr_info *info, size_t size,
   return 0;
 }
 
-struct snare_plt_dl_iterate_handle_data
-{
+struct snare_plt_dl_iterate_handle_data {
   void *target_handle;
   void *base_addr;
 };
 
 static int snare_plt_dl_iterate_handle_cb(struct dl_phdr_info *info,
-                                          size_t size, void *data)
-{
+                                          size_t size, void *data) {
   struct snare_plt_dl_iterate_handle_data *handle_data =
       (struct snare_plt_dl_iterate_handle_data *)data;
   void *handle;
@@ -1644,8 +1521,7 @@ static int snare_plt_dl_iterate_handle_cb(struct dl_phdr_info *info,
   handle = dlopen(info->dlpi_name, RTLD_NOLOAD);
   if (handle == NULL)
     return 0;
-  if (handle == handle_data->target_handle)
-  {
+  if (handle == handle_data->target_handle) {
     handle_data->base_addr = (void *)info->dlpi_addr;
     dlclose(handle);
     return 1;
@@ -1655,34 +1531,27 @@ static int snare_plt_dl_iterate_handle_cb(struct dl_phdr_info *info,
 }
 #endif
 SNARE_EXPORT int SNARE_API snare_plt_open(snare_plt_t **plthook_out,
-                                          const char *filename)
-{
+                                          const char *filename) {
   *plthook_out = NULL;
-  if (filename == NULL)
-  {
+  if (filename == NULL) {
     return snare_plt_open_executable(plthook_out);
-  }
-  else
-  {
+  } else {
     return snare_plt_open_shared_library(plthook_out, filename);
   }
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
-                                                    void *hndl)
-{
+                                                    void *hndl) {
 #if defined __ANDROID__
   struct snare_plt_dl_iterate_handle_data handle_data = {0};
-  if (hndl == NULL)
-  {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("NULL handle");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
   handle_data.target_handle = hndl;
   handle_data.base_addr = NULL;
   dl_iterate_phdr(snare_plt_dl_iterate_handle_cb, &handle_data);
-  if (handle_data.base_addr == NULL)
-  {
+  if (handle_data.base_addr == NULL) {
     snare_plt_set_errmsg("Could not find base address for handle.");
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -1690,16 +1559,13 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
 #elif defined __UCLIBC__
   const static char *symbols[] = {"__INIT_ARRAY__", "_end", "_start"};
   size_t i;
-  if (hndl == NULL)
-  {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("NULL handle");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
-  for (i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++)
-  {
+  for (i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++) {
     char *addr = dlsym(hndl, symbols[i]);
-    if (addr != NULL)
-    {
+    if (addr != NULL) {
       return snare_plt_open_by_address(plthook_out, addr - 1);
     }
   }
@@ -1708,13 +1574,11 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
 #else
   struct link_map *lmap = NULL;
 
-  if (hndl == NULL)
-  {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("NULL handle");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
-  if (dlinfo(hndl, RTLD_DI_LINKMAP, &lmap) != 0)
-  {
+  if (dlinfo(hndl, RTLD_DI_LINKMAP, &lmap) != 0) {
     snare_plt_set_errmsg("dlinfo error");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
@@ -1722,8 +1586,7 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
 #endif
 }
 SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
-                                                     void *address)
-{
+                                                     void *address) {
 #if defined __FreeBSD__
   return SNARE_PLT_NOT_IMPLEMENTED;
 #elif defined __ANDROID__ || defined __UCLIBC__
@@ -1732,8 +1595,7 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
   };
   data.addr = address;
   dl_iterate_phdr(snare_plt_dl_iterate_cb, &data);
-  if (data.lmap.l_ld == NULL)
-  {
+  if (data.lmap.l_ld == NULL) {
     snare_plt_set_errmsg("Could not find memory region containing address %p",
                          address);
     return SNARE_PLT_INTERNAL_ERROR;
@@ -1741,39 +1603,34 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
   return snare_plt_open_real(plthook_out, &data.lmap);
 #else
   Dl_info info;
-  union
-  {
+  union {
     struct link_map *lmap;
     void *ptr;
   } addr = {NULL};
 
   *plthook_out = NULL;
-  if (dladdr1(address, &info, (void **)(&addr.ptr), RTLD_DL_LINKMAP) == 0)
-  {
+  if (dladdr1(address, &info, (void **)(&addr.ptr), RTLD_DL_LINKMAP) == 0) {
     snare_plt_set_errmsg("dladdr error");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
   return snare_plt_open_real(plthook_out, addr.lmap);
 #endif
 }
-static int snare_plt_open_executable(snare_plt_t **plthook_out)
-{
+static int snare_plt_open_executable(snare_plt_t **plthook_out) {
 #if defined __ANDROID__
   /* On Android, dlsym cannot find symbols like __INIT_ARRAY__, _end, _start
    * in the main executable. Use /proc/self/exe to get the executable path,
    * then find it via dl_iterate_phdr. */
   struct snare_plt_dl_iterate_exe_data data = {0};
   ssize_t len = readlink("/proc/self/exe", data.exe_path, PATH_MAX - 1);
-  if (len <= 0)
-  {
+  if (len <= 0) {
     snare_plt_set_errmsg("Could not open executable: %s", strerror(errno));
     return SNARE_PLT_INTERNAL_ERROR;
   }
   data.exe_path[len] = '\0';
   data.exe_path_len = (size_t)len;
   dl_iterate_phdr(snare_plt_dl_iterate_exe_cb, &data);
-  if (!data.found)
-  {
+  if (!data.found) {
     snare_plt_set_errmsg("Could not find executable map of %s", data.exe_path);
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -1789,22 +1646,18 @@ static int snare_plt_open_executable(snare_plt_t **plthook_out)
   auxv_t auxv;
   struct r_debug *r_debug = NULL;
 
-  if (fp == NULL)
-  {
+  if (fp == NULL) {
     snare_plt_set_errmsg("Could not open %s: %s", auxv_file, strerror(errno));
     return SNARE_PLT_INTERNAL_ERROR;
   }
-  while (fread(&auxv, sizeof(auxv_t), 1, fp) == 1)
-  {
-    if (auxv.a_type == AT_SUN_LDDATA)
-    {
+  while (fread(&auxv, sizeof(auxv_t), 1, fp) == 1) {
+    if (auxv.a_type == AT_SUN_LDDATA) {
       r_debug = (struct r_debug *)auxv.a_un.a_ptr;
       break;
     }
   }
   fclose(fp);
-  if (r_debug == NULL)
-  {
+  if (r_debug == NULL) {
     snare_plt_set_errmsg("Could not find r_debug");
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -1819,8 +1672,7 @@ static int snare_plt_open_executable(snare_plt_t **plthook_out)
 }
 
 static int snare_plt_open_shared_library(snare_plt_t **plthook_out,
-                                         const char *filename)
-{
+                                         const char *filename) {
   void *hndl = dlopen(filename, RTLD_LAZY | RTLD_NOLOAD);
 #if defined __ANDROID__ || defined __UCLIBC__
   int rv;
@@ -1828,8 +1680,7 @@ static int snare_plt_open_shared_library(snare_plt_t **plthook_out,
   struct link_map *lmap = NULL;
 #endif
 
-  if (hndl == NULL)
-  {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("dlopen error: %s", dlerror());
     return SNARE_PLT_FILE_NOT_FOUND;
   }
@@ -1838,8 +1689,7 @@ static int snare_plt_open_shared_library(snare_plt_t **plthook_out,
   dlclose(hndl);
   return rv;
 #else
-  if (dlinfo(hndl, RTLD_DI_LINKMAP, &lmap) != 0)
-  {
+  if (dlinfo(hndl, RTLD_DI_LINKMAP, &lmap) != 0) {
     snare_plt_set_errmsg("dlinfo error");
     dlclose(hndl);
     return SNARE_PLT_FILE_NOT_FOUND;
@@ -1849,12 +1699,9 @@ static int snare_plt_open_shared_library(snare_plt_t **plthook_out,
 #endif
 }
 static const Snare_Elf_Dyn *snare_plt_find_dyn_by_tag(const Snare_Elf_Dyn *dyn,
-                                                      Snare_Elf_Sxword tag)
-{
-  while (dyn->d_tag != DT_NULL)
-  {
-    if (dyn->d_tag == tag)
-    {
+                                                      Snare_Elf_Sxword tag) {
+  while (dyn->d_tag != DT_NULL) {
+    if (dyn->d_tag == tag) {
       return dyn;
     }
     dyn++;
@@ -1863,15 +1710,12 @@ static const Snare_Elf_Dyn *snare_plt_find_dyn_by_tag(const Snare_Elf_Dyn *dyn,
 }
 
 #ifdef __linux__
-struct snare_plt_mem_prot_iter
-{
+struct snare_plt_mem_prot_iter {
   FILE *fp;
 };
-static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
-{
+static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter) {
   iter->fp = fopen("/proc/self/maps", "r");
-  if (iter->fp == NULL)
-  {
+  if (iter->fp == NULL) {
     snare_plt_set_errmsg("failed to open /proc/self/maps");
     return -1;
   }
@@ -1879,52 +1723,41 @@ static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
 }
 
 static int snare_plt_mem_prot_next(snare_plt_mem_prot_iter_t *iter,
-                                   snare_plt_mem_prot_t *mem_prot)
-{
+                                   snare_plt_mem_prot_t *mem_prot) {
   char buf[PATH_MAX];
   char perms[5];
   int bol = 1; /* beginnng of line */
 
-  while (fgets(buf, PATH_MAX, iter->fp) != NULL)
-  {
+  while (fgets(buf, PATH_MAX, iter->fp) != NULL) {
     unsigned long start, end;
     int eol = (strchr(buf, '\n') != NULL); /* end of line */
-    if (bol)
-    {
+    if (bol) {
       /* The fgets reads from the beginning of a line. */
-      if (!eol)
-      {
+      if (!eol) {
         /* The next fgets reads from the middle of the same line. */
         bol = 0;
       }
-    }
-    else
-    {
+    } else {
       /* The fgets reads from the middle of a line. */
-      if (eol)
-      {
+      if (eol) {
         /* The next fgets reads from the beginning of a line. */
         bol = 1;
       }
       continue;
     }
-    if (sscanf(buf, "%lx-%lx %4s", &start, &end, perms) != 3)
-    {
+    if (sscanf(buf, "%lx-%lx %4s", &start, &end, perms) != 3) {
       continue;
     }
     mem_prot->start = start;
     mem_prot->end = end;
     mem_prot->prot = 0;
-    if (perms[0] == 'r')
-    {
+    if (perms[0] == 'r') {
       mem_prot->prot |= PROT_READ;
     }
-    if (perms[1] == 'w')
-    {
+    if (perms[1] == 'w') {
       mem_prot->prot |= PROT_WRITE;
     }
-    if (perms[2] == 'x')
-    {
+    if (perms[2] == 'x') {
       mem_prot->prot |= PROT_EXEC;
     }
     return 0;
@@ -1932,26 +1765,21 @@ static int snare_plt_mem_prot_next(snare_plt_mem_prot_iter_t *iter,
   return -1;
 }
 
-static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter)
-{
-  if (iter->fp != NULL)
-  {
+static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter) {
+  if (iter->fp != NULL) {
     fclose(iter->fp);
   }
 }
 #elif defined __FreeBSD__
-struct snare_plt_mem_prot_iter
-{
+struct snare_plt_mem_prot_iter {
   struct kinfo_vmentry *kve;
   int idx;
   int num;
 };
 
-static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
-{
+static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter) {
   iter->kve = kinfo_getvmmap(getpid(), &iter->num);
-  if (iter->kve == NULL)
-  {
+  if (iter->kve == NULL) {
     snare_plt_set_errmsg("failed to call kinfo_getvmmap()\n");
     return -1;
   }
@@ -1960,52 +1788,42 @@ static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
 }
 
 static int snare_plt_mem_prot_next(snare_plt_mem_prot_iter_t *iter,
-                                   snare_plt_mem_prot_t *mem_prot)
-{
-  if (iter->idx >= iter->num)
-  {
+                                   snare_plt_mem_prot_t *mem_prot) {
+  if (iter->idx >= iter->num) {
     return -1;
   }
   struct kinfo_vmentry *kve = &iter->kve[iter->idx++];
   mem_prot->start = kve->kve_start;
   mem_prot->end = kve->kve_end;
   mem_prot->prot = 0;
-  if (kve->kve_protection & KVME_PROT_READ)
-  {
+  if (kve->kve_protection & KVME_PROT_READ) {
     mem_prot->prot |= PROT_READ;
   }
-  if (kve->kve_protection & KVME_PROT_WRITE)
-  {
+  if (kve->kve_protection & KVME_PROT_WRITE) {
     mem_prot->prot |= PROT_WRITE;
   }
-  if (kve->kve_protection & KVME_PROT_EXEC)
-  {
+  if (kve->kve_protection & KVME_PROT_EXEC) {
     mem_prot->prot |= PROT_EXEC;
   }
   return 0;
 }
 
-static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter)
-{
-  if (iter->kve != NULL)
-  {
+static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter) {
+  if (iter->kve != NULL) {
     free(iter->kve);
   }
 }
 #elif defined(__sun)
-struct snare_plt_mem_prot_iter
-{
+struct snare_plt_mem_prot_iter {
   FILE *fp;
   prmap_t maps[20];
   size_t idx;
   size_t num;
 };
 
-static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
-{
+static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter) {
   iter->fp = fopen("/proc/self/map", "r");
-  if (iter->fp == NULL)
-  {
+  if (iter->fp == NULL) {
     snare_plt_set_errmsg("failed to open /proc/self/map");
     return -1;
   }
@@ -2014,15 +1832,12 @@ static int snare_plt_mem_prot_begin(snare_plt_mem_prot_iter_t *iter)
 }
 
 static int snare_plt_mem_prot_next(snare_plt_mem_prot_iter_t *iter,
-                                   snare_plt_mem_prot_t *mem_prot)
-{
+                                   snare_plt_mem_prot_t *mem_prot) {
   prmap_t *map;
-  if (iter->idx == iter->num)
-  {
+  if (iter->idx == iter->num) {
     iter->num = fread(iter->maps, sizeof(iter->maps[0]),
                       sizeof(iter->maps) / sizeof(iter->maps[0]), iter->fp);
-    if (iter->num == 0)
-    {
+    if (iter->num == 0) {
       return -1;
     }
     iter->idx = 0;
@@ -2031,25 +1846,20 @@ static int snare_plt_mem_prot_next(snare_plt_mem_prot_iter_t *iter,
   mem_prot->start = map->pr_vaddr;
   mem_prot->end = map->pr_vaddr + map->pr_size;
   mem_prot->prot = 0;
-  if (map->pr_mflags & MA_READ)
-  {
+  if (map->pr_mflags & MA_READ) {
     mem_prot->prot |= PROT_READ;
   }
-  if (map->pr_mflags & MA_WRITE)
-  {
+  if (map->pr_mflags & MA_WRITE) {
     mem_prot->prot |= PROT_WRITE;
   }
-  if (map->pr_mflags & MA_EXEC)
-  {
+  if (map->pr_mflags & MA_EXEC) {
     mem_prot->prot |= PROT_EXEC;
   }
   return 0;
 }
 
-static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter)
-{
-  if (iter->fp != NULL)
-  {
+static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter) {
+  if (iter->fp != NULL) {
     fclose(iter->fp);
   }
 }
@@ -2058,15 +1868,13 @@ static void snare_plt_mem_prot_end(snare_plt_mem_prot_iter_t *iter)
 #endif
 
 static int snare_plt_open_real(snare_plt_t **plthook_out,
-                               struct link_map *lmap)
-{
+                               struct link_map *lmap) {
   snare_plt_t plthook = {
       NULL,
   };
   const Snare_Elf_Dyn *dyn;
   const char *dyn_addr_base = NULL;
-  if (snare_plt_page_size == 0)
-  {
+  if (snare_plt_page_size == 0) {
     snare_plt_page_size = sysconf(_SC_PAGESIZE);
   }
 
@@ -2074,8 +1882,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
   plthook.plt_addr_base = (char *)lmap->l_addr;
 #if defined __riscv
   const Snare_Elf_Ehdr *ehdr = (const Snare_Elf_Ehdr *)lmap->l_addr;
-  if (ehdr->e_type == ET_DYN)
-  {
+  if (ehdr->e_type == ET_DYN) {
     dyn_addr_base = (const char *)lmap->l_addr;
   }
 #endif
@@ -2089,12 +1896,10 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
   const Snare_Elf_Ehdr *ehdr = (const Snare_Elf_Ehdr *)lmap->l_addr;
 #endif
   int rv_ = snare_plt_check_elf_header(ehdr);
-  if (rv_ != 0)
-  {
+  if (rv_ != 0) {
     return rv_;
   }
-  if (ehdr->e_type == ET_DYN)
-  {
+  if (ehdr->e_type == ET_DYN) {
     dyn_addr_base = (const char *)lmap->l_addr;
     plthook.plt_addr_base = (const char *)lmap->l_addr;
   }
@@ -2104,8 +1909,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 
   /* get .dynsym section */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_SYMTAB);
-  if (dyn == NULL)
-  {
+  if (dyn == NULL) {
     snare_plt_set_errmsg("failed to find DT_SYMTAB");
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -2113,13 +1917,11 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 
   /* Check sizeof(Snare_Elf_Sym) */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_SYMENT);
-  if (dyn == NULL)
-  {
+  if (dyn == NULL) {
     snare_plt_set_errmsg("failed to find DT_SYMTAB");
     return SNARE_PLT_INTERNAL_ERROR;
   }
-  if (dyn->d_un.d_val != sizeof(Snare_Elf_Sym))
-  {
+  if (dyn->d_un.d_val != sizeof(Snare_Elf_Sym)) {
     snare_plt_set_errmsg("DT_SYMENT size %" SNARE_PLT_ELF_XWORD_FMT
                          " != %" SNARE_PLT_SIZE_T_FMT,
                          dyn->d_un.d_val, sizeof(Snare_Elf_Sym));
@@ -2128,8 +1930,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 
   /* Get .dynstr section */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_STRTAB);
-  if (dyn == NULL)
-  {
+  if (dyn == NULL) {
     snare_plt_set_errmsg("failed to find DT_STRTAB");
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -2137,8 +1938,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 
   /* Get .dynstr size */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_STRSZ);
-  if (dyn == NULL)
-  {
+  if (dyn == NULL) {
     snare_plt_set_errmsg("failed to find DT_STRSZ");
     return SNARE_PLT_INTERNAL_ERROR;
   }
@@ -2146,13 +1946,11 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 
   /* Get .rela.plt or .rel.plt section */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_JMPREL);
-  if (dyn != NULL)
-  {
+  if (dyn != NULL) {
     plthook.rela_plt =
         (const Snare_Elf_Plt_Rel *)(dyn_addr_base + dyn->d_un.d_ptr);
     dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, DT_PLTRELSZ);
-    if (dyn == NULL)
-    {
+    if (dyn == NULL) {
       snare_plt_set_errmsg("failed to find DT_PLTRELSZ");
       return SNARE_PLT_INTERNAL_ERROR;
     }
@@ -2161,23 +1959,20 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 #ifdef R_GLOBAL_DATA
   /* Get .rela.dyn or .rel.dyn section */
   dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, SNARE_PLT_PLT_DT_REL);
-  if (dyn != NULL)
-  {
+  if (dyn != NULL) {
     size_t total_size, elem_size;
 
     plthook.rela_dyn =
         (const Snare_Elf_Plt_Rel *)(dyn_addr_base + dyn->d_un.d_ptr);
     dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, SNARE_PLT_PLT_DT_RELSZ);
-    if (dyn == NULL)
-    {
+    if (dyn == NULL) {
       snare_plt_set_errmsg("failed to find PLT_DT_RELSZ");
       return SNARE_PLT_INTERNAL_ERROR;
     }
     total_size = dyn->d_un.d_val;
 
     dyn = snare_plt_find_dyn_by_tag(lmap->l_ld, SNARE_PLT_PLT_DT_RELENT);
-    if (dyn == NULL)
-    {
+    if (dyn == NULL) {
       snare_plt_set_errmsg("failed to find PLT_DT_RELENT");
       return SNARE_PLT_INTERNAL_ERROR;
     }
@@ -2187,26 +1982,22 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
 #endif
 
 #ifdef R_GLOBAL_DATA
-  if (plthook.rela_plt == NULL && plthook.rela_dyn == NULL)
-  {
+  if (plthook.rela_plt == NULL && plthook.rela_dyn == NULL) {
     snare_plt_set_errmsg("failed to find either of DT_JMPREL and DT_REL");
     return SNARE_PLT_INTERNAL_ERROR;
   }
 #else
-  if (plthook.rela_plt == NULL)
-  {
+  if (plthook.rela_plt == NULL) {
     snare_plt_set_errmsg("failed to find DT_JMPREL");
     return SNARE_PLT_INTERNAL_ERROR;
   }
 #endif
-  if (snare_plt_set_mem_prot(&plthook))
-  {
+  if (snare_plt_set_mem_prot(&plthook)) {
     return SNARE_PLT_INTERNAL_ERROR;
   }
 
   *plthook_out = (snare_plt_t *)malloc(sizeof(snare_plt_t));
-  if (*plthook_out == NULL)
-  {
+  if (*plthook_out == NULL) {
     snare_plt_set_errmsg("failed to allocate memory: %" SNARE_PLT_SIZE_T_FMT
                          " bytes",
                          sizeof(snare_plt_t));
@@ -2215,8 +2006,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out,
   **plthook_out = plthook;
   return 0;
 }
-static int snare_plt_set_mem_prot(snare_plt_t *plthook)
-{
+static int snare_plt_set_mem_prot(snare_plt_t *plthook) {
   unsigned int pos = 0;
   const char *name;
   void **addr;
@@ -2226,28 +2016,22 @@ static int snare_plt_set_mem_prot(snare_plt_t *plthook)
   snare_plt_mem_prot_t mem_prot;
   int idx = 0;
 
-  while (snare_plt_enum(plthook, &pos, &name, &addr) == 0)
-  {
-    if (start > (size_t)addr)
-    {
+  while (snare_plt_enum(plthook, &pos, &name, &addr) == 0) {
+    if (start > (size_t)addr) {
       start = (size_t)addr;
     }
-    if (end < (size_t)addr)
-    {
+    if (end < (size_t)addr) {
       end = (size_t)addr;
     }
   }
   end++;
 
-  if (snare_plt_mem_prot_begin(&iter) != 0)
-  {
+  if (snare_plt_mem_prot_begin(&iter) != 0) {
     return SNARE_PLT_INTERNAL_ERROR;
   }
   while (snare_plt_mem_prot_next(&iter, &mem_prot) == 0 &&
-         idx < SNARE_PLT_NUM_MEM_PROT)
-  {
-    if (mem_prot.prot != 0 && mem_prot.start < end && start < mem_prot.end)
-    {
+         idx < SNARE_PLT_NUM_MEM_PROT) {
+    if (mem_prot.prot != 0 && mem_prot.start < end && start < mem_prot.end) {
       plthook->mem_prot[idx++] = mem_prot;
     }
   }
@@ -2255,15 +2039,12 @@ static int snare_plt_set_mem_prot(snare_plt_t *plthook)
   return 0;
 }
 
-static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr)
-{
+static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr) {
   snare_plt_mem_prot_t *ptr = plthook->mem_prot;
   snare_plt_mem_prot_t *end = ptr + SNARE_PLT_NUM_MEM_PROT;
 
-  while (ptr < end && ptr->prot != 0)
-  {
-    if (ptr->start <= (size_t)addr && (size_t)addr < ptr->end)
-    {
+  while (ptr < end && ptr->prot != 0) {
+    if (ptr->start <= (size_t)addr && (size_t)addr < ptr->end) {
       return ptr->prot;
     }
     ++ptr;
@@ -2272,58 +2053,48 @@ static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr)
 }
 
 #if defined __FreeBSD__ || defined __sun
-static int snare_plt_check_elf_header(const Snare_Elf_Ehdr *ehdr)
-{
+static int snare_plt_check_elf_header(const Snare_Elf_Ehdr *ehdr) {
   static const unsigned short s = 1;
   /* Check endianness at runtime. */
   unsigned char elfdata = (*(const char *)&s) ? ELFDATA2LSB : ELFDATA2MSB;
-  if (ehdr == NULL)
-  {
+  if (ehdr == NULL) {
     snare_plt_set_errmsg("invalid elf header address: NULL");
     return SNARE_PLT_INTERNAL_ERROR;
   }
-  if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0)
-  {
+  if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) {
     snare_plt_set_errmsg("invalid file signature: 0x%02x,0x%02x,0x%02x,0x%02x",
                          ehdr->e_ident[0], ehdr->e_ident[1], ehdr->e_ident[2],
                          ehdr->e_ident[3]);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_ident[EI_CLASS] != ELF_CLASS)
-  {
+  if (ehdr->e_ident[EI_CLASS] != ELF_CLASS) {
     snare_plt_set_errmsg("invalid elf class: 0x%02x", ehdr->e_ident[EI_CLASS]);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_ident[EI_DATA] != elfdata)
-  {
+  if (ehdr->e_ident[EI_DATA] != elfdata) {
     snare_plt_set_errmsg("invalid elf data: 0x%02x", ehdr->e_ident[EI_DATA]);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_ident[EI_VERSION] != EV_CURRENT)
-  {
+  if (ehdr->e_ident[EI_VERSION] != EV_CURRENT) {
     snare_plt_set_errmsg("invalid elf version: 0x%02x",
                          ehdr->e_ident[EI_VERSION]);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN)
-  {
+  if (ehdr->e_type != ET_EXEC && ehdr->e_type != ET_DYN) {
     snare_plt_set_errmsg("invalid file type: 0x%04x", ehdr->e_type);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_version != EV_CURRENT)
-  {
+  if (ehdr->e_version != EV_CURRENT) {
     snare_plt_set_errmsg(
         "invalid object file version: %" SNARE_PLT_ELF_WORD_FMT,
         ehdr->e_version);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_ehsize != sizeof(Snare_Elf_Ehdr))
-  {
+  if (ehdr->e_ehsize != sizeof(Snare_Elf_Ehdr)) {
     snare_plt_set_errmsg("invalid elf header size: %u", ehdr->e_ehsize);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (ehdr->e_phentsize != sizeof(Snare_Elf_Phdr))
-  {
+  if (ehdr->e_phentsize != sizeof(Snare_Elf_Phdr)) {
     snare_plt_set_errmsg("invalid program header table entry size: %u",
                          ehdr->e_phentsize);
     return SNARE_PLT_INVALID_FILE_FORMAT;
@@ -2335,14 +2106,11 @@ static int snare_plt_check_elf_header(const Snare_Elf_Ehdr *ehdr)
 static int snare_plt_check_rel(const snare_plt_t *plthook,
                                const Snare_Elf_Plt_Rel *plt,
                                Snare_Elf_Xword r_type, const char **name_out,
-                               void ***addr_out)
-{
-  if (ELF_R_TYPE(plt->r_info) == r_type)
-  {
+                               void ***addr_out) {
+  if (ELF_R_TYPE(plt->r_info) == r_type) {
     size_t idx = ELF_R_SYM(plt->r_info);
     idx = plthook->dynsym[idx].st_name;
-    if (idx + 1 > plthook->dynstr_size)
-    {
+    if (idx + 1 > plthook->dynstr_size) {
       snare_plt_set_errmsg(
           "too big section header string table index: %" SNARE_PLT_SIZE_T_FMT,
           idx);
@@ -2359,8 +2127,7 @@ static int snare_plt_check_rel(const snare_plt_t *plthook,
 SNARE_EXPORT int SNARE_API snare_plt_enum(snare_plt_t *plthook,
                                           unsigned int *pos,
                                           const char **name_out,
-                                          void ***addr_out)
-{
+                                          void ***addr_out) {
   return snare_plt_enum_with_prot(plthook, pos, name_out, addr_out, NULL);
 }
 
@@ -2368,34 +2135,27 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
                                                     unsigned int *pos,
                                                     const char **name_out,
                                                     void ***addr_out,
-                                                    int *prot)
-{
-  while (*pos < plthook->rela_plt_cnt)
-  {
+                                                    int *prot) {
+  while (*pos < plthook->rela_plt_cnt) {
     const Snare_Elf_Plt_Rel *plt = plthook->rela_plt + *pos;
     int rv = snare_plt_check_rel(plthook, plt, R_JUMP_SLOT, name_out, addr_out);
     (*pos)++;
-    if (rv >= 0)
-    {
-      if (rv == 0 && prot != NULL)
-      {
+    if (rv >= 0) {
+      if (rv == 0 && prot != NULL) {
         *prot = snare_plt_get_mem_prot(plthook, *addr_out);
       }
       return rv;
     }
   }
 #ifdef R_GLOBAL_DATA
-  while (*pos < plthook->rela_plt_cnt + plthook->rela_dyn_cnt)
-  {
+  while (*pos < plthook->rela_plt_cnt + plthook->rela_dyn_cnt) {
     const Snare_Elf_Plt_Rel *plt =
         plthook->rela_dyn + (*pos - plthook->rela_plt_cnt);
     int rv =
         snare_plt_check_rel(plthook, plt, R_GLOBAL_DATA, name_out, addr_out);
     (*pos)++;
-    if (rv >= 0)
-    {
-      if (rv == 0 && prot != NULL)
-      {
+    if (rv >= 0) {
+      if (rv == 0 && prot != NULL) {
         *prot = snare_plt_get_mem_prot(plthook, *addr_out);
       }
       return rv;
@@ -2408,81 +2168,66 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
 }
 SNARE_EXPORT int SNARE_API snare_plt_replace(snare_plt_t *plthook,
                                              const char *funcname,
-                                             void *funcaddr, void **oldfunc)
-{
+                                             void *funcaddr, void **oldfunc) {
   size_t funcnamelen = strlen(funcname);
   unsigned int pos = 0;
   const char *name;
   void **addr;
   int rv;
 
-  if (plthook == NULL)
-  {
+  if (plthook == NULL) {
     snare_plt_set_errmsg("invalid argument: The first argument is null.");
     return SNARE_PLT_INVALID_ARGUMENT;
   }
-  while ((rv = snare_plt_enum(plthook, &pos, &name, &addr)) == 0)
-  {
-    if (strncmp(name, funcname, funcnamelen) == 0)
-    {
-      if (name[funcnamelen] == '\0' || name[funcnamelen] == '@')
-      {
+  while ((rv = snare_plt_enum(plthook, &pos, &name, &addr)) == 0) {
+    if (strncmp(name, funcname, funcnamelen) == 0) {
+      if (name[funcnamelen] == '\0' || name[funcnamelen] == '@') {
         int prot = snare_plt_get_mem_prot(plthook, addr);
-        if (prot == 0)
-        {
+        if (prot == 0) {
           snare_plt_set_errmsg(
               "Could not get the process memory permission at %p",
               SNARE_PLT_ALIGN_ADDR(addr));
           return SNARE_PLT_INTERNAL_ERROR;
         }
-        if (!(prot & PROT_WRITE))
-        {
+        if (!(prot & PROT_WRITE)) {
           if (mprotect(SNARE_PLT_ALIGN_ADDR(addr), snare_plt_page_size,
-                       PROT_READ | PROT_WRITE) != 0)
-          {
+                       PROT_READ | PROT_WRITE) != 0) {
             snare_plt_set_errmsg(
                 "Could not change the process memory permission at %p: %s",
                 SNARE_PLT_ALIGN_ADDR(addr), strerror(errno));
             return SNARE_PLT_INTERNAL_ERROR;
           }
         }
-        if (oldfunc)
-        {
+        if (oldfunc) {
           void *prev = dlsym(RTLD_DEFAULT, funcname);
           *oldfunc = (prev != NULL) ? prev : *addr;
         }
         *addr = funcaddr;
-        if (!(prot & PROT_WRITE))
-        {
+        if (!(prot & PROT_WRITE)) {
           mprotect(SNARE_PLT_ALIGN_ADDR(addr), snare_plt_page_size, prot);
         }
         return 0;
       }
     }
   }
-  if (rv == EOF)
-  {
+  if (rv == EOF) {
     snare_plt_set_errmsg("no such function: %s", funcname);
     rv = SNARE_PLT_FUNCTION_NOT_FOUND;
   }
   return rv;
 }
 
-SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook)
-{
-  if (plthook != NULL)
-  {
+SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook) {
+  if (plthook != NULL) {
     free(plthook);
   }
 }
 
-SNARE_EXPORT const char *SNARE_API snare_plt_error(void)
-{
+SNARE_EXPORT const char *SNARE_API snare_plt_error(void) {
   return snare_plt_errmsg;
 }
 
-static void snare_plt_set_errmsg(const char *fmt, ...)
-{
+static void snare_plt_set_errmsg(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(snare_plt_errmsg, sizeof(snare_plt_errmsg) - 1, fmt, ap);
@@ -2491,8 +2236,7 @@ static void snare_plt_set_errmsg(const char *fmt, ...)
 
 SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
                                                 unsigned int *pos,
-                                                snare_plt_entry_t *entry)
-{
+                                                snare_plt_entry_t *entry) {
   (void)plthook;
   (void)pos;
   (void)entry;
@@ -2523,16 +2267,16 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
 #define SNARE_PLT_SIZE_T_FMT "u"
 #endif
 
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || \
+#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) ||     \
     ((defined(__MSYS__) || defined(__MSYS2__)) && defined(__clang__))
 #define stricmp strcasecmp
 #endif
 
 #ifdef SNARE_PLT_DEBUG
 #define SNARE_PLT_DEBUG_MSG(...) fprintf(stderr, __VA_ARGS__)
-#define SNARE_PLT_DEBUG_MSG_ENTRY(title, id, ordinal)                        \
-  SNARE_PLT_DEBUG_MSG(title " [%zu] [Ordinal: %d]: %s %s %p\n", id, ordinal, \
-                      plthook->entries[id].mod_name,                         \
+#define SNARE_PLT_DEBUG_MSG_ENTRY(title, id, ordinal)                          \
+  SNARE_PLT_DEBUG_MSG(title " [%zu] [Ordinal: %d]: %s %s %p\n", id, ordinal,   \
+                      plthook->entries[id].mod_name,                           \
                       plthook->entries[id].name, plthook->entries[id].addr)
 #else
 #define SNARE_PLT_DEBUG_MSG(...)
@@ -2541,15 +2285,13 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
 
 #define SNARE_PLT_DLATTR_RVA 0x1
 
-typedef struct
-{
+typedef struct {
   const char *mod_name;
   const char *name;
   void **addr;
 } snare_plt_import_entry_t;
 
-struct snare_plt_s
-{
+struct snare_plt_s {
   HMODULE hMod;
   unsigned int num_entries;
   snare_plt_import_entry_t entries[1];
@@ -2564,14 +2306,12 @@ static void snare_plt_set_errmsg2(_Printf_format_string_ const char *fmt, ...)
 static const char *snare_plt_ws2_ordinal2name(int ordinal);
 
 SNARE_EXPORT int SNARE_API snare_plt_open(snare_plt_t **plthook_out,
-                                          const char *filename)
-{
+                                          const char *filename) {
   HMODULE hMod;
 
   *plthook_out = NULL;
   if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                          filename, &hMod))
-  {
+                          filename, &hMod)) {
     snare_plt_set_errmsg2("Cannot get module %s: ", filename);
     return SNARE_PLT_FILE_NOT_FOUND;
   }
@@ -2579,10 +2319,8 @@ SNARE_EXPORT int SNARE_API snare_plt_open(snare_plt_t **plthook_out,
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
-                                                    void *hndl)
-{
-  if (hndl == NULL)
-  {
+                                                    void *hndl) {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("NULL handle");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
@@ -2590,23 +2328,20 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
-                                                     void *address)
-{
+                                                     void *address) {
   HMODULE hMod;
 
   *plthook_out = NULL;
   if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT |
                               GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                          (LPCSTR)address, &hMod))
-  {
+                          (LPCSTR)address, &hMod)) {
     snare_plt_set_errmsg2("Cannot get module at address %p: ", address);
     return SNARE_PLT_FILE_NOT_FOUND;
   }
   return snare_plt_open_real(plthook_out, hMod);
 }
 
-static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
-{
+static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod) {
   snare_plt_t *plthook;
   ULONG ulSize;
   IMAGE_IMPORT_DESCRIPTOR *desc_head, *desc;
@@ -2621,34 +2356,28 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
 
   desc_head = (IMAGE_IMPORT_DESCRIPTOR *)ImageDirectoryEntryToData(
       hMod, TRUE, IMAGE_DIRECTORY_ENTRY_IMPORT, &ulSize);
-  if (desc_head == NULL)
-  {
+  if (desc_head == NULL) {
     snare_plt_set_errmsg2("ImageDirectoryEntryToData error: ");
     return SNARE_PLT_INTERNAL_ERROR;
   }
 
   /* calculate size to allocate memory (import table) */
-  for (desc = desc_head; desc->Name != 0; desc++)
-  {
+  for (desc = desc_head; desc->Name != 0; desc++) {
     /* OriginalFirstThunk (ILT) contains the names/hints */
     IMAGE_THUNK_DATA *ilt_thunk =
         (IMAGE_THUNK_DATA *)((uintptr_t)hMod + desc->OriginalFirstThunk);
     const char *module_name = (char *)((uintptr_t)hMod + desc->Name);
     int is_winsock2_dll = (stricmp(module_name, "WS2_32.DLL") == 0);
 
-    while (ilt_thunk->u1.AddressOfData != 0)
-    {
-      if (IMAGE_SNAP_BY_ORDINAL(ilt_thunk->u1.Ordinal))
-      {
+    while (ilt_thunk->u1.AddressOfData != 0) {
+      if (IMAGE_SNAP_BY_ORDINAL(ilt_thunk->u1.Ordinal)) {
         int ordinal = IMAGE_ORDINAL(ilt_thunk->u1.Ordinal);
         const char *name = NULL;
-        if (is_winsock2_dll)
-        {
+        if (is_winsock2_dll) {
           name = snare_plt_ws2_ordinal2name(ordinal);
         }
-        if (name == NULL)
-        {
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || \
+        if (name == NULL) {
+#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) ||     \
     ((defined(__MSYS__) || defined(__MSYS2__)) && defined(__clang__))
           ordinal_name_buflen +=
               snprintf(NULL, 0, "%s:@%d", module_name, ordinal) + 1;
@@ -2665,8 +2394,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
   nt = (PIMAGE_NT_HEADERS)((uintptr_t)hMod +
                            ((PIMAGE_DOS_HEADER)hMod)->e_lfanew);
   dir = &nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT];
-  if (dir->VirtualAddress && dir->Size)
-  {
+  if (dir->VirtualAddress && dir->Size) {
     size_t iterator;
 
     dload_head = dload =
@@ -2674,8 +2402,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
     dload_count = dir->Size / sizeof(*dload_head);
 
     for (iterator = 0; iterator < dload_count && dload->DllNameRVA != 0;
-         iterator++, dload++)
-    {
+         iterator++, dload++) {
       /* Check if it uses absolute addresses or RVAs */
       BOOL uses_rva = dload->Attributes.AllAttributes & SNARE_PLT_DLATTR_RVA;
       /* Import Name Table (INT) contains function names */
@@ -2687,24 +2414,19 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
       const char *module_name = (char *)((uintptr_t)hMod + dload->DllNameRVA);
       int is_winsock2_dll = (stricmp(module_name, "WS2_32.DLL") == 0);
 
-      if (*module_name == '\0')
-      {
+      if (*module_name == '\0') {
         continue;
       }
 
-      while (int_thunk->u1.AddressOfData != 0)
-      {
-        if (IMAGE_SNAP_BY_ORDINAL(int_thunk->u1.Ordinal))
-        {
+      while (int_thunk->u1.AddressOfData != 0) {
+        if (IMAGE_SNAP_BY_ORDINAL(int_thunk->u1.Ordinal)) {
           int ordinal = IMAGE_ORDINAL(int_thunk->u1.Ordinal);
           const char *name = NULL;
-          if (is_winsock2_dll)
-          {
+          if (is_winsock2_dll) {
             name = snare_plt_ws2_ordinal2name(ordinal);
           }
-          if (name == NULL)
-          {
-#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) || \
+          if (name == NULL) {
+#if defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__) ||     \
     ((defined(__MSYS__) || defined(__MSYS2__)) && defined(__clang__))
             ordinal_name_buflen +=
                 snprintf(NULL, 0, "%s:@%d", module_name, ordinal) + 1;
@@ -2720,10 +2442,10 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
     }
   }
   plthook = (snare_plt_t *)calloc(1, offsetof(snare_plt_t, entries) +
-                          sizeof(snare_plt_import_entry_t) * num_entries +
-                          ordinal_name_buflen);
-  if (plthook == NULL)
-  {
+                                         sizeof(snare_plt_import_entry_t) *
+                                             num_entries +
+                                         ordinal_name_buflen);
+  if (plthook == NULL) {
     snare_plt_set_errmsg("failed to allocate memory: %" SNARE_PLT_SIZE_T_FMT
                          " bytes",
                          sizeof(snare_plt_t));
@@ -2736,8 +2458,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
                sizeof(snare_plt_import_entry_t) * num_entries);
   idx = 0;
   /* Import Table */
-  for (desc = desc_head; desc->Name != 0; desc++)
-  {
+  for (desc = desc_head; desc->Name != 0; desc++) {
     /* OriginalFirstThunk (Import Lookup Table) contains the names/hints */
     IMAGE_THUNK_DATA *ilt_thunk =
         (IMAGE_THUNK_DATA *)((uintptr_t)hMod + desc->OriginalFirstThunk);
@@ -2749,25 +2470,19 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
     const char *module_name = (char *)hMod + desc->Name;
     int is_winsock2_dll = (stricmp(module_name, "WS2_32.DLL") == 0);
     SNARE_PLT_DEBUG_MSG("Imported Library: '%s'\n", module_name);
-    while (ilt_thunk->u1.AddressOfData != 0)
-    {
+    while (ilt_thunk->u1.AddressOfData != 0) {
       const char *name = NULL;
-      if (IMAGE_SNAP_BY_ORDINAL(ilt_thunk->u1.Ordinal))
-      {
+      if (IMAGE_SNAP_BY_ORDINAL(ilt_thunk->u1.Ordinal)) {
         int ordinal = IMAGE_ORDINAL(ilt_thunk->u1.Ordinal);
-        if (is_winsock2_dll)
-        {
+        if (is_winsock2_dll) {
           name = snare_plt_ws2_ordinal2name(ordinal);
         }
-        if (name == NULL)
-        {
+        if (name == NULL) {
           name = ordinal_name_buf;
           ordinal_name_buf +=
               sprintf(ordinal_name_buf, "%s:@%d", module_name, ordinal) + 1;
         }
-      }
-      else
-      {
+      } else {
         PIMAGE_IMPORT_BY_NAME import_by_name =
             (PIMAGE_IMPORT_BY_NAME)((uintptr_t)hMod +
                                     ilt_thunk->u1.AddressOfData);
@@ -2787,14 +2502,12 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
   }
 
   /* Delayed Load Import Table */
-  if (dload_head != NULL)
-  {
+  if (dload_head != NULL) {
     size_t iterator;
 
     for (iterator = 0, dload = dload_head;
          iterator < dload_count && dload->DllNameRVA != 0;
-         iterator++, dload++)
-    {
+         iterator++, dload++) {
       /* Check if it uses absolute addresses or RVAs */
       BOOL uses_rva = dload->Attributes.AllAttributes & SNARE_PLT_DLATTR_RVA;
       /* Import Name Table (INT) contains function names */
@@ -2814,33 +2527,26 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
       const char *module_name = (char *)((uintptr_t)hMod + dload->DllNameRVA);
       int is_winsock2_dll = (stricmp(module_name, "WS2_32.DLL") == 0);
 
-      if (*module_name == '\0')
-      {
+      if (*module_name == '\0') {
         continue;
       }
 
       SNARE_PLT_DEBUG_MSG("Imported Delayed Library: '%s'\n", module_name);
 
-      while (int_thunk->u1.AddressOfData != 0)
-      {
+      while (int_thunk->u1.AddressOfData != 0) {
         const char *name = NULL;
 
-        if (IMAGE_SNAP_BY_ORDINAL(int_thunk->u1.Ordinal))
-        {
+        if (IMAGE_SNAP_BY_ORDINAL(int_thunk->u1.Ordinal)) {
           int ordinal = IMAGE_ORDINAL(int_thunk->u1.Ordinal);
-          if (is_winsock2_dll)
-          {
+          if (is_winsock2_dll) {
             name = snare_plt_ws2_ordinal2name(ordinal);
           }
-          if (name == NULL)
-          {
+          if (name == NULL) {
             name = ordinal_name_buf;
             ordinal_name_buf +=
                 sprintf(ordinal_name_buf, "%s:@%d", module_name, ordinal) + 1;
           }
-        }
-        else
-        {
+        } else {
           PIMAGE_IMPORT_BY_NAME import_by_name =
               (PIMAGE_IMPORT_BY_NAME)((uintptr_t)hMod +
                                       int_thunk->u1.AddressOfData);
@@ -2874,10 +2580,8 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, HMODULE hMod)
 SNARE_EXPORT int SNARE_API snare_plt_enum(snare_plt_t *plthook,
                                           unsigned int *pos,
                                           const char **name_out,
-                                          void ***addr_out)
-{
-  if (*pos >= plthook->num_entries)
-  {
+                                          void ***addr_out) {
+  if (*pos >= plthook->num_entries) {
     *name_out = NULL;
     *addr_out = NULL;
     return EOF;
@@ -2889,13 +2593,11 @@ SNARE_EXPORT int SNARE_API snare_plt_enum(snare_plt_t *plthook,
 }
 
 static void snare_plt_replace_funcaddr(void **addr, void *newfunc,
-                                       void **oldfunc)
-{
+                                       void **oldfunc) {
   DWORD dwOld;
   DWORD dwDummy;
 
-  if (oldfunc != NULL)
-  {
+  if (oldfunc != NULL) {
     *oldfunc = *addr;
   }
   VirtualProtect(addr, sizeof(void *), PAGE_EXECUTE_READWRITE, &dwOld);
@@ -2905,8 +2607,7 @@ static void snare_plt_replace_funcaddr(void **addr, void *newfunc,
 
 SNARE_EXPORT int SNARE_API snare_plt_replace(snare_plt_t *plthook,
                                              const char *funcname,
-                                             void *funcaddr, void **oldfunc)
-{
+                                             void *funcaddr, void **oldfunc) {
 #ifndef _WIN64
   size_t funcnamelen = strlen(funcname);
 #endif
@@ -2916,44 +2617,32 @@ SNARE_EXPORT int SNARE_API snare_plt_replace(snare_plt_t *plthook,
   int rv;
   BOOL import_by_ordinal = funcname[0] != '?' && strstr(funcname, ":@") != NULL;
 
-  if (plthook == NULL)
-  {
+  if (plthook == NULL) {
     snare_plt_set_errmsg("invalid argument: The first argument is null.");
     return SNARE_PLT_INVALID_ARGUMENT;
   }
-  while ((rv = snare_plt_enum(plthook, &pos, &name, &addr)) == 0)
-  {
-    if (import_by_ordinal)
-    {
-      if (stricmp(name, funcname) == 0)
-      {
+  while ((rv = snare_plt_enum(plthook, &pos, &name, &addr)) == 0) {
+    if (import_by_ordinal) {
+      if (stricmp(name, funcname) == 0) {
         goto found;
       }
-    }
-    else
-    {
+    } else {
       /* Import by name */
 #ifdef _WIN64
-      if (strcmp(name, funcname) == 0)
-      {
+      if (strcmp(name, funcname) == 0) {
         goto found;
       }
 #else
       /* Function names may be decorated in Windows 32-bit applications */
-      if (strncmp(name, funcname, funcnamelen) == 0)
-      {
-        if (name[funcnamelen] == '\0' || name[funcnamelen] == '@')
-        {
+      if (strncmp(name, funcname, funcnamelen) == 0) {
+        if (name[funcnamelen] == '\0' || name[funcnamelen] == '@') {
           goto found;
         }
       }
-      if (name[0] == '_' || name[0] == '@')
-      {
+      if (name[0] == '_' || name[0] == '@') {
         name++;
-        if (strncmp(name, funcname, funcnamelen) == 0)
-        {
-          if (name[funcnamelen] == '\0' || name[funcnamelen] == '@')
-          {
+        if (strncmp(name, funcname, funcnamelen) == 0) {
+          if (name[funcnamelen] == '\0' || name[funcnamelen] == '@') {
             goto found;
           }
         }
@@ -2961,8 +2650,7 @@ SNARE_EXPORT int SNARE_API snare_plt_replace(snare_plt_t *plthook,
 #endif
     }
   }
-  if (rv == EOF)
-  {
+  if (rv == EOF) {
     snare_plt_set_errmsg("no such function: %s", funcname);
     rv = SNARE_PLT_FUNCTION_NOT_FOUND;
   }
@@ -2972,29 +2660,24 @@ found:
   return 0;
 }
 
-SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook)
-{
-  if (plthook != NULL)
-  {
+SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook) {
+  if (plthook != NULL) {
     free(plthook);
   }
 }
 
-SNARE_EXPORT const char *SNARE_API snare_plt_error(void)
-{
+SNARE_EXPORT const char *SNARE_API snare_plt_error(void) {
   return snare_plt_errbuf;
 }
 
-static void snare_plt_set_errmsg(_Printf_format_string_ const char *fmt, ...)
-{
+static void snare_plt_set_errmsg(_Printf_format_string_ const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(snare_plt_errbuf, sizeof(snare_plt_errbuf) - 1, fmt, ap);
   va_end(ap);
 }
 
-static void snare_plt_set_errmsg2(_Printf_format_string_ const char *fmt, ...)
-{
+static void snare_plt_set_errmsg2(_Printf_format_string_ const char *fmt, ...) {
   va_list ap;
   size_t len;
 
@@ -3008,10 +2691,8 @@ static void snare_plt_set_errmsg2(_Printf_format_string_ const char *fmt, ...)
       snare_plt_errbuf + len, sizeof(snare_plt_errbuf) - len - 1, NULL);
 }
 
-static const char *snare_plt_ws2_ordinal2name(int ordinal)
-{
-  switch (ordinal)
-  {
+static const char *snare_plt_ws2_ordinal2name(int ordinal) {
+  switch (ordinal) {
   case 1:
     return "accept";
   case 2:
@@ -3182,16 +2863,14 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
                                                     unsigned int *pos,
                                                     const char **name_out,
                                                     void ***addr_out,
-                                                    int *prot)
-{
+                                                    int *prot) {
   (void)prot;
   return snare_plt_enum(plthook, pos, name_out, addr_out);
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
                                                 unsigned int *pos,
-                                                snare_plt_entry_t *entry)
-{
+                                                snare_plt_entry_t *entry) {
   (void)plthook;
   (void)pos;
   (void)entry;
@@ -3232,8 +2911,8 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
 
 #ifdef SNARE_PLT_DEBUG_BIND
 #define SNARE_PLT_DEBUG_BIND_MSG(...) fprintf(stderr, __VA_ARGS__)
-#define SNARE_PLT_DEBUG_BIND_IF(cond, ...) \
-  if (cond)                                \
+#define SNARE_PLT_DEBUG_BIND_IF(cond, ...)                                     \
+  if (cond)                                                                    \
   fprintf(stderr, __VA_ARGS__)
 #else
 #define SNARE_PLT_DEBUG_BIND_MSG(...)
@@ -3244,10 +2923,8 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
 #include <mach/mach.h>
 
 #define SNARE_PLT_INHERIT_MAX_SIZE 11
-static char *snare_plt_inherit_to_str(vm_inherit_t inherit, char *buf)
-{
-  switch (inherit)
-  {
+static char *snare_plt_inherit_to_str(vm_inherit_t inherit, char *buf) {
+  switch (inherit) {
   case VM_INHERIT_SHARE:
     return "share";
   case VM_INHERIT_COPY:
@@ -3263,10 +2940,8 @@ static char *snare_plt_inherit_to_str(vm_inherit_t inherit, char *buf)
 }
 
 #define SNARE_PLT_BEHAVIOR_MAX_SIZE 16
-static char *snare_plt_behavior_to_str(vm_behavior_t behavior, char *buf)
-{
-  switch (behavior)
-  {
+static char *snare_plt_behavior_to_str(vm_behavior_t behavior, char *buf) {
+  switch (behavior) {
   case VM_BEHAVIOR_DEFAULT:
     return "default";
   case VM_BEHAVIOR_RANDOM:
@@ -3296,8 +2971,7 @@ static char *snare_plt_behavior_to_str(vm_behavior_t behavior, char *buf)
     return buf;
   }
 }
-static void snare_plt_dump_maps(const char *image_name)
-{
+static void snare_plt_dump_maps(const char *image_name) {
   mach_port_t task = mach_task_self();
   vm_region_basic_info_data_64_t info;
   mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
@@ -3314,8 +2988,7 @@ static void snare_plt_dump_maps(const char *image_name)
       "    shared reserved offset   behavior         user_wired_count\n");
   while (vm_region_64(task, &addr, &size, VM_REGION_BASIC_INFO_64,
                       (vm_region_info_t)&info, &info_count,
-                      &object) == KERN_SUCCESS)
-  {
+                      &object) == KERN_SUCCESS) {
     fprintf(stderr,
             " %016lx-%016lx %c%c%c(%08x) %c%c%c(%08x)  %-*s %c      %c        "
             "%08llx %-*s %u\n",
@@ -3336,16 +3009,14 @@ static void snare_plt_dump_maps(const char *image_name)
 }
 #endif
 
-typedef struct
-{
+typedef struct {
   const char *name;
   int addend;
   char weak;
   void **addr;
 } snare_plt_bind_address_t;
 
-typedef struct snare_plt_mem_prot
-{
+typedef struct snare_plt_mem_prot {
   size_t start;
   size_t end;
   int prot;
@@ -3353,8 +3024,7 @@ typedef struct snare_plt_mem_prot
 
 #define SNARE_PLT_NUM_MEM_PROT 100
 
-struct snare_plt_s
-{
+struct snare_plt_s {
   unsigned int num_entries;
   snare_plt_mem_prot_t mem_prot[SNARE_PLT_NUM_MEM_PROT];
   snare_plt_bind_address_t entries[1];
@@ -3363,8 +3033,7 @@ struct snare_plt_s
 #define SNARE_PLT_MAX_SEGMENTS 8
 #define SNARE_PLT_MAX_SECTIONS 30
 
-typedef struct
-{
+typedef struct {
   snare_plt_t *plthook;
   intptr_t slide;
   int num_segments;
@@ -3405,8 +3074,7 @@ static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr);
 
 static inline uint8_t *
 snare_plt_fileoff_to_vmaddr_in_segment(snare_plt_data_t *d, int segment_index,
-                                       size_t offset)
-{
+                                       size_t offset) {
   const struct segment_command_64 *seg = d->segments[segment_index];
   return (uint8_t *)(seg->vmaddr - seg->fileoff + d->slide + offset);
 }
@@ -3414,33 +3082,25 @@ snare_plt_fileoff_to_vmaddr_in_segment(snare_plt_data_t *d, int segment_index,
 static void snare_plt_set_errmsg(const char *fmt, ...)
     __attribute__((__format__(__printf__, 1, 2)));
 
-static uint64_t snare_plt_uleb128(const uint8_t **p)
-{
+static uint64_t snare_plt_uleb128(const uint8_t **p) {
   uint64_t r = 0;
   int s = 0;
-  do
-  {
+  do {
     r |= (uint64_t)(**p & 0x7f) << s;
     s += 7;
   } while (*(*p)++ >= 0x80);
   return r;
 }
 
-static int64_t snare_plt_sleb128(const uint8_t **p)
-{
+static int64_t snare_plt_sleb128(const uint8_t **p) {
   int64_t r = 0;
   int s = 0;
-  for (;;)
-  {
+  for (;;) {
     uint8_t b = *(*p)++;
-    if (b < 0x80)
-    {
-      if (b & 0x40)
-      {
+    if (b < 0x80) {
+      if (b & 0x40) {
         r -= (0x80 - b) << s;
-      }
-      else
-      {
+      } else {
         r |= (b & 0x3f) << s;
       }
       break;
@@ -3454,40 +3114,33 @@ static int64_t snare_plt_sleb128(const uint8_t **p)
 static char snare_plt_errmsg[512];
 
 SNARE_EXPORT int SNARE_API snare_plt_open(snare_plt_t **plthook_out,
-                                          const char *filename)
-{
+                                          const char *filename) {
   size_t namelen;
   uint32_t cnt;
   uint32_t idx;
 
-  if (filename == NULL)
-  {
+  if (filename == NULL) {
     return snare_plt_open_real(plthook_out, 0, NULL, NULL);
   }
   cnt = _dyld_image_count();
   namelen = strlen(filename);
 
-  for (idx = 0; idx < cnt; idx++)
-  {
+  for (idx = 0; idx < cnt; idx++) {
     const char *image_name = _dyld_get_image_name(idx);
     size_t offset = 0;
 
-    if (image_name == NULL)
-    {
+    if (image_name == NULL) {
       *plthook_out = NULL;
       snare_plt_set_errmsg("Cannot find file at image index %u", idx);
       return SNARE_PLT_INTERNAL_ERROR;
     }
-    if (*filename != '/')
-    {
+    if (*filename != '/') {
       size_t image_name_len = strlen(image_name);
-      if (image_name_len > namelen)
-      {
+      if (image_name_len > namelen) {
         offset = image_name_len - namelen;
       }
     }
-    if (strcmp(image_name + offset, filename) == 0)
-    {
+    if (strcmp(image_name + offset, filename) == 0) {
       return snare_plt_open_real(plthook_out, idx, NULL, image_name);
     }
   }
@@ -3497,8 +3150,7 @@ SNARE_EXPORT int SNARE_API snare_plt_open(snare_plt_t **plthook_out,
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
-                                                    void *hndl)
-{
+                                                    void *hndl) {
   int flags[] = {
       RTLD_LAZY | RTLD_NOLOAD,
       RTLD_LAZY | RTLD_NOLOAD | RTLD_FIRST,
@@ -3507,24 +3159,19 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
   uint32_t cnt = _dyld_image_count();
 #define SNARE_PLT_NUM_FLAGS (sizeof(flags) / sizeof(flags[0]))
 
-  if (hndl == NULL)
-  {
+  if (hndl == NULL) {
     snare_plt_set_errmsg("NULL handle");
     return SNARE_PLT_FILE_NOT_FOUND;
   }
-  for (flag_idx = 0; flag_idx < (int)SNARE_PLT_NUM_FLAGS; flag_idx++)
-  {
+  for (flag_idx = 0; flag_idx < (int)SNARE_PLT_NUM_FLAGS; flag_idx++) {
     uint32_t idx;
 
-    for (idx = 0; idx < cnt; idx++)
-    {
+    for (idx = 0; idx < cnt; idx++) {
       const char *image_name = idx ? _dyld_get_image_name(idx) : NULL;
       void *handle = dlopen(image_name, flags[flag_idx]);
-      if (handle != NULL)
-      {
+      if (handle != NULL) {
         dlclose(handle);
-        if (handle == hndl)
-        {
+        if (handle == hndl) {
           return snare_plt_open_real(plthook_out, idx, NULL, image_name);
         }
       }
@@ -3535,22 +3182,18 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_handle(snare_plt_t **plthook_out,
 }
 
 SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
-                                                     void *address)
-{
+                                                     void *address) {
   Dl_info dlinfo;
   uint32_t idx = 0;
   uint32_t cnt = _dyld_image_count();
 
-  if (!dladdr(address, &dlinfo))
-  {
+  if (!dladdr(address, &dlinfo)) {
     *plthook_out = NULL;
     snare_plt_set_errmsg("Cannot find address: %p", address);
     return SNARE_PLT_FILE_NOT_FOUND;
   }
-  for (idx = 0; idx < cnt; idx++)
-  {
-    if (dlinfo.dli_fbase == _dyld_get_image_header(idx))
-    {
+  for (idx = 0; idx < cnt; idx++) {
+    if (dlinfo.dli_fbase == _dyld_get_image_header(idx)) {
       return snare_plt_open_real(plthook_out, idx, dlinfo.dli_fbase,
                                  dlinfo.dli_fname);
     }
@@ -3562,8 +3205,7 @@ SNARE_EXPORT int SNARE_API snare_plt_open_by_address(snare_plt_t **plthook_out,
 
 static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
                                const struct mach_header *mh,
-                               const char *image_name)
-{
+                               const char *image_name) {
   struct load_command *cmd;
   const struct dyld_info_command *dyld_info = NULL;
   unsigned int nbind;
@@ -3575,12 +3217,10 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
 
   data.linkedit_segment_idx = -1;
   data.slide = _dyld_get_image_vmaddr_slide(image_idx);
-  if (mh == NULL)
-  {
+  if (mh == NULL) {
     mh = _dyld_get_image_header(image_idx);
   }
-  if (image_name == NULL)
-  {
+  if (image_name == NULL) {
     image_name = _dyld_get_image_name(image_idx);
   }
 #if defined(SNARE_PLT_DEBUG_CMD) || defined(SNARE_PLT_DEBUG_ADDR)
@@ -3593,15 +3233,13 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
 
   cmd = (struct load_command *)((size_t)mh + sizeof(struct mach_header_64));
   SNARE_PLT_DEBUG_CMD_MSG("CMD START\n");
-  for (i = 0; i < mh->ncmds; i++)
-  {
+  for (i = 0; i < mh->ncmds; i++) {
 #ifdef SNARE_PLT_DEBUG_CMD
     struct segment_command *segment;
 #endif
     struct segment_command_64 *segment64;
 
-    switch (cmd->cmd)
-    {
+    switch (cmd->cmd) {
     case LC_SEGMENT: /* 0x1 */
 #ifdef SNARE_PLT_DEBUG_CMD
       segment = (struct segment_command *)cmd;
@@ -3629,15 +3267,13 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
           segment64->segname, segment64->vmaddr, segment64->vmsize,
           segment64->fileoff, segment64->filesize, segment64->maxprot,
           segment64->initprot, segment64->nsects, segment64->flags);
-      if (strcmp(segment64->segname, "__LINKEDIT") == 0)
-      {
+      if (strcmp(segment64->segname, "__LINKEDIT") == 0) {
         data.linkedit_segment_idx = data.num_segments;
       }
 #ifdef SNARE_PLT_DEBUG_FIXUPS
       struct section_64 *sec = (struct section_64 *)(segment64 + 1);
       uint32_t i;
-      for (i = 0; i < segment64->nsects; i++)
-      {
+      for (i = 0; i < segment64->nsects; i++) {
         SNARE_PLT_DEBUG_CMD_MSG("  section_64 (%u)\n"
                                 "      sectname  %s\n"
                                 "      segname   %s\n"
@@ -3658,8 +3294,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
         sec++;
       }
 #endif
-      if (data.num_segments == SNARE_PLT_MAX_SEGMENTS)
-      {
+      if (data.num_segments == SNARE_PLT_MAX_SEGMENTS) {
         snare_plt_set_errmsg("Too many segments: %s", image_name);
         return SNARE_PLT_INTERNAL_ERROR;
       }
@@ -3668,10 +3303,8 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
       {
         struct section_64 *sec = (struct section_64 *)(segment64 + 1);
         struct section_64 *sec_end = sec + segment64->nsects;
-        while (sec < sec_end)
-        {
-          if (data.num_sections == SNARE_PLT_MAX_SECTIONS)
-          {
+        while (sec < sec_end) {
+          if (data.num_sections == SNARE_PLT_MAX_SECTIONS) {
             snare_plt_set_errmsg("Too many sections: %s", image_name);
             return SNARE_PLT_INTERNAL_ERROR;
           }
@@ -3764,17 +3397,14 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
     cmd = (struct load_command *)((size_t)cmd + cmd->cmdsize);
   }
   SNARE_PLT_DEBUG_CMD_MSG("CMD END\n");
-  if (data.linkedit_segment_idx == -1)
-  {
+  if (data.linkedit_segment_idx == -1) {
     snare_plt_set_errmsg("Cannot find the linkedit segment: %s", image_name);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
-  if (data.chained_fixups != NULL)
-  {
+  if (data.chained_fixups != NULL) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
     int rv = snare_plt_read_chained_fixups(&data, image_name);
-    if (rv != 0)
-    {
+    if (rv != 0) {
       return rv;
     }
 #else
@@ -3783,9 +3413,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
                          image_name);
     return SNARE_PLT_INTERNAL_ERROR;
 #endif
-  }
-  else
-  {
+  } else {
     nbind = 0;
     nbind = snare_plt_set_bind_addrs(&data, nbind, dyld_info->bind_off,
                                      dyld_info->bind_size, 0);
@@ -3796,8 +3424,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
     size = offsetof(snare_plt_t, entries) +
            sizeof(snare_plt_bind_address_t) * nbind;
     data.plthook = (snare_plt_t *)calloc(1, size);
-    if (data.plthook == NULL)
-    {
+    if (data.plthook == NULL) {
       snare_plt_set_errmsg("failed to allocate memory: %" PRIuPTR " bytes",
                            size);
       return SNARE_PLT_OUT_OF_MEMORY;
@@ -3820,8 +3447,7 @@ static int snare_plt_open_real(snare_plt_t **plthook_out, uint32_t image_idx,
 static unsigned int snare_plt_set_bind_addrs(snare_plt_data_t *data,
                                              unsigned int idx,
                                              uint32_t bind_off,
-                                             uint32_t bind_size, char weak)
-{
+                                             uint32_t bind_size, char weak) {
   const uint8_t *ptr = snare_plt_fileoff_to_vmaddr_in_segment(
       data, data->linkedit_segment_idx, bind_off);
   const uint8_t *end = ptr + bind_size;
@@ -3834,16 +3460,14 @@ static unsigned int snare_plt_set_bind_addrs(snare_plt_data_t *data,
   int cond = data->plthook != NULL;
 #endif
 
-  while (ptr < end)
-  {
+  while (ptr < end) {
     uint8_t op = *ptr & BIND_OPCODE_MASK;
     uint8_t imm = *ptr & BIND_IMMEDIATE_MASK;
     int i;
 
     SNARE_PLT_DEBUG_BIND_IF(cond, "0x%02x: ", *ptr);
     ptr++;
-    switch (op)
-    {
+    switch (op) {
     case BIND_OPCODE_DONE:
       SNARE_PLT_DEBUG_BIND_IF(cond, "BIND_OPCODE_DONE\n");
       break;
@@ -3861,13 +3485,10 @@ static unsigned int snare_plt_set_bind_addrs(snare_plt_data_t *data,
 #endif
       break;
     case BIND_OPCODE_SET_DYLIB_SPECIAL_IMM:
-      if (imm == 0)
-      {
+      if (imm == 0) {
         SNARE_PLT_DEBUG_BIND_IF(
             cond, "BIND_OPCODE_SET_DYLIB_SPECIAL_IMM: ordinal = 0\n");
-      }
-      else
-      {
+      } else {
         SNARE_PLT_DEBUG_BIND_IF(
             cond, "BIND_OPCODE_SET_DYLIB_SPECIAL_IMM: ordinal = %u\n",
             BIND_OPCODE_MASK | imm);
@@ -3926,8 +3547,7 @@ static unsigned int snare_plt_set_bind_addrs(snare_plt_data_t *data,
     case BIND_OPCODE_DO_BIND_ULEB_TIMES_SKIPPING_ULEB:
       count = snare_plt_uleb128(&ptr);
       skip = snare_plt_uleb128(&ptr);
-      for (i = 0; i < count; i++)
-      {
+      for (i = 0; i < count; i++) {
         snare_plt_set_bind_addr(data, &idx, sym_name, seg_index, seg_offset,
                                 addend, weak);
         seg_offset += skip + sizeof(void *);
@@ -3944,10 +3564,8 @@ static unsigned int snare_plt_set_bind_addrs(snare_plt_data_t *data,
 
 static void snare_plt_set_bind_addr(snare_plt_data_t *data, unsigned int *idx,
                                     const char *sym_name, int seg_index,
-                                    int seg_offset, int addend, char weak)
-{
-  if (data->plthook != NULL)
-  {
+                                    int seg_offset, int addend, char weak) {
+  if (data->plthook != NULL) {
     size_t vmaddr = data->segments[seg_index]->vmaddr;
     snare_plt_bind_address_t *bind_addr = &data->plthook->entries[*idx];
     bind_addr->name = sym_name;
@@ -3962,8 +3580,7 @@ static void snare_plt_set_bind_addr(snare_plt_data_t *data, unsigned int *idx,
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 120000
-typedef struct
-{
+typedef struct {
   const char *image_name;
   FILE *fp;
   const struct dyld_chained_starts_in_image *starts;
@@ -3972,11 +3589,9 @@ typedef struct
   off_t offset;
 } snare_plt_chained_fixups_iter_t;
 
-typedef struct
-{
+typedef struct {
   uint16_t ptr_format;
-  union
-  {
+  union {
     uint64_t raw;
     struct dyld_chained_ptr_64_rebase rebase;
     struct dyld_chained_ptr_64_bind bind;
@@ -4003,12 +3618,10 @@ snare_plt_chained_fixups_iter_next(snare_plt_chained_fixups_iter_t *iter,
 
 static int snare_plt_chained_fixups_iter_init(
     snare_plt_chained_fixups_iter_t *iter, const char *image_name,
-    const struct dyld_chained_starts_in_image *starts)
-{
+    const struct dyld_chained_starts_in_image *starts) {
   memset(iter, 0, sizeof(*iter));
   iter->fp = fopen(image_name, "r");
-  if (iter->fp == NULL)
-  {
+  if (iter->fp == NULL) {
     snare_plt_set_errmsg("failed to open file %s (error: %s)", image_name,
                          strerror(errno));
     return SNARE_PLT_FILE_NOT_FOUND;
@@ -4019,18 +3632,15 @@ static int snare_plt_chained_fixups_iter_init(
 }
 
 static void
-snare_plt_chained_fixups_iter_deinit(snare_plt_chained_fixups_iter_t *iter)
-{
-  if (iter->fp != NULL)
-  {
+snare_plt_chained_fixups_iter_deinit(snare_plt_chained_fixups_iter_t *iter) {
+  if (iter->fp != NULL) {
     fclose(iter->fp);
     iter->fp = NULL;
   }
 }
 
 static int
-snare_plt_chained_fixups_iter_rewind(snare_plt_chained_fixups_iter_t *iter)
-{
+snare_plt_chained_fixups_iter_rewind(snare_plt_chained_fixups_iter_t *iter) {
   iter->seg_index = 0;
   iter->page_index = 0;
   iter->offset = 0;
@@ -4039,25 +3649,21 @@ snare_plt_chained_fixups_iter_rewind(snare_plt_chained_fixups_iter_t *iter)
 
 static int
 snare_plt_chained_fixups_iter_next(snare_plt_chained_fixups_iter_t *iter,
-                                   snare_plt_chained_fixups_entry_t *entry)
-{
+                                   snare_plt_chained_fixups_entry_t *entry) {
   const struct dyld_chained_starts_in_image *starts = iter->starts;
   uint32_t i = iter->seg_index;
   uint16_t j = iter->page_index;
   off_t offset = iter->offset;
 
 next_segment:
-  if (i == starts->seg_count)
-  {
+  if (i == starts->seg_count) {
     return -1;
   }
-  if (j == 0 && offset == 0)
-  {
+  if (j == 0 && offset == 0) {
     SNARE_PLT_DEBUG_FIXUPS_MSG("  seg_info_offset[%u] %u\n", i,
                                starts->seg_info_offset[i]);
   }
-  if (starts->seg_info_offset[i] == 0)
-  {
+  if (starts->seg_info_offset[i] == 0) {
     i++;
     j = 0;
     offset = 0;
@@ -4066,8 +3672,7 @@ next_segment:
   const struct dyld_chained_starts_in_segment *seg =
       (const struct dyld_chained_starts_in_segment
            *)((char *)starts + starts->seg_info_offset[i]);
-  if (j == 0 && offset == 0)
-  {
+  if (j == 0 && offset == 0) {
     SNARE_PLT_DEBUG_FIXUPS_MSG("    dyld_chained_starts_in_segment\n"
                                "      size              %u\n"
                                "      page_size         0x%x\n"
@@ -4080,54 +3685,44 @@ next_segment:
                                seg->max_valid_pointer, seg->page_count);
   }
 next_page:
-  if (j == seg->page_count)
-  {
+  if (j == seg->page_count) {
     i++;
     j = 0;
     offset = 0;
     goto next_segment;
   }
 
-  if (seg->page_start[j] == DYLD_CHAINED_PTR_START_NONE)
-  {
+  if (seg->page_start[j] == DYLD_CHAINED_PTR_START_NONE) {
     SNARE_PLT_DEBUG_FIXUPS_MSG(
         "      page_start[%u]     DYLD_CHAINED_PTR_START_NONE\n", j);
     j++;
     offset = 0;
     goto next_page;
   }
-  if (offset == 0)
-  {
+  if (offset == 0) {
     SNARE_PLT_DEBUG_FIXUPS_MSG("      page_start[%u]     %u\n", j,
                                seg->page_start[j]);
   }
-  if (offset == 0)
-  {
+  if (offset == 0) {
     offset = seg->segment_offset + j * seg->page_size + seg->page_start[j];
   }
-  if (fseeko(iter->fp, offset, SEEK_SET) != 0)
-  {
+  if (fseeko(iter->fp, offset, SEEK_SET) != 0) {
     snare_plt_set_errmsg("failed to seek to %lld in %s", offset,
                          iter->image_name);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
   entry->ptr_format = seg->pointer_format;
-  if (fread(&entry->ptr, sizeof(entry->ptr), 1, iter->fp) != 1)
-  {
+  if (fread(&entry->ptr, sizeof(entry->ptr), 1, iter->fp) != 1) {
     snare_plt_set_errmsg("failed to read fixup chain from %s",
                          iter->image_name);
     return SNARE_PLT_INVALID_FILE_FORMAT;
   }
   entry->offset = offset;
-  switch (seg->pointer_format)
-  {
+  switch (seg->pointer_format) {
   case DYLD_CHAINED_PTR_64_OFFSET:
-    if (entry->ptr.bind.next)
-    {
+    if (entry->ptr.bind.next) {
       offset += entry->ptr.bind.next * 4;
-    }
-    else
-    {
+    } else {
       j++;
       offset = 0;
     }
@@ -4144,8 +3739,7 @@ next_page:
 }
 
 static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
-                                         const char *image_name)
-{
+                                         const char *image_name) {
   const uint8_t *ptr = snare_plt_fileoff_to_vmaddr_in_segment(
       d, d->linkedit_segment_idx, d->chained_fixups->dataoff);
   const struct dyld_chained_fixups_header *header =
@@ -4165,8 +3759,7 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
   memset(&iter, 0, sizeof(snare_plt_chained_fixups_iter_t));
 
   rv = snare_plt_chained_fixups_iter_init(&iter, image_name, starts);
-  if (rv != 0)
-  {
+  if (rv != 0) {
     return rv;
   }
 
@@ -4182,8 +3775,7 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
                              header->imports_offset, header->symbols_offset,
                              header->imports_count, header->imports_format,
                              header->symbols_format);
-  if (header->fixups_version != 0)
-  {
+  if (header->fixups_version != 0) {
     snare_plt_set_errmsg("unknown chained fixups version %u",
                          header->fixups_version);
     rv = SNARE_PLT_INVALID_FILE_FORMAT;
@@ -4194,10 +3786,8 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
                              "  seg_count       %u\n",
                              starts->seg_count);
   num_binds = 0;
-  while ((rv = snare_plt_chained_fixups_iter_next(&iter, &entry)) == 0)
-  {
-    if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET && entry.ptr.bind.bind)
-    {
+  while ((rv = snare_plt_chained_fixups_iter_next(&iter, &entry)) == 0) {
+    if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET && entry.ptr.bind.bind) {
       num_binds++;
     }
 #if 0
@@ -4210,16 +3800,14 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
         }
 #endif
   }
-  if (rv > 0)
-  {
+  if (rv > 0) {
     goto cleanup;
   }
 
   size = offsetof(snare_plt_t, entries) +
          sizeof(snare_plt_bind_address_t) * num_binds;
   d->plthook = (snare_plt_t *)calloc(1, size);
-  if (d->plthook == NULL)
-  {
+  if (d->plthook == NULL) {
     snare_plt_set_errmsg("failed to allocate memory: %" PRIuPTR " bytes", size);
     rv = SNARE_PLT_OUT_OF_MEMORY;
     goto cleanup;
@@ -4228,10 +3816,8 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
 
   snare_plt_chained_fixups_iter_rewind(&iter);
   num_binds = 0;
-  while ((rv = snare_plt_chained_fixups_iter_next(&iter, &entry)) == 0)
-  {
-    if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET && entry.ptr.bind.bind)
-    {
+  while ((rv = snare_plt_chained_fixups_iter_next(&iter, &entry)) == 0) {
+    if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET && entry.ptr.bind.bind) {
       uint16_t ordinal = entry.ptr.bind.ordinal;
       uint32_t name_offset;
       char weak = 0;
@@ -4240,19 +3826,15 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
       int32_t lib_ordinal;
       const char *libname;
 #endif
-      switch (header->imports_format)
-      {
+      switch (header->imports_format) {
       case DYLD_CHAINED_IMPORT:
         name_offset = import[ordinal].name_offset;
         weak = import[ordinal].weak_import;
 #ifdef SNARE_PLT_DEBUG_FIXUPS
         if (import[ordinal].lib_ordinal >=
-            (uint8_t)BIND_SPECIAL_DYLIB_WEAK_LOOKUP)
-        {
+            (uint8_t)BIND_SPECIAL_DYLIB_WEAK_LOOKUP) {
           lib_ordinal = (int8_t)import[ordinal].lib_ordinal;
-        }
-        else
-        {
+        } else {
           lib_ordinal = (uint8_t)import[ordinal].lib_ordinal;
         }
 #endif
@@ -4270,8 +3852,7 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
       bind_addr->addend = entry.ptr.bind.addend;
       bind_addr->weak = weak;
 #ifdef SNARE_PLT_DEBUG_FIXUPS
-      switch (lib_ordinal)
-      {
+      switch (lib_ordinal) {
       case BIND_SPECIAL_DYLIB_SELF:
         libname = "this-image";
         break;
@@ -4293,20 +3874,16 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
           snare_plt_segment_name_from_addr(d, entry.offset),
           snare_plt_section_name_from_addr(d, entry.offset), entry.offset,
           libname, symbol_pool + name_offset);
-      if (entry.ptr.bind.addend != 0)
-      {
+      if (entry.ptr.bind.addend != 0) {
         SNARE_PLT_DEBUG_FIXUPS_MSG(" + 0x%X", entry.ptr.bind.addend);
       }
-      if (weak)
-      {
+      if (weak) {
         SNARE_PLT_DEBUG_FIXUPS_MSG(" [weak-import]");
       }
       SNARE_PLT_DEBUG_FIXUPS_MSG("\n");
       num_binds++;
-    }
-    else if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET &&
-             !entry.ptr.bind.bind)
-    {
+    } else if (entry.ptr_format == DYLD_CHAINED_PTR_64_OFFSET &&
+               !entry.ptr.bind.bind) {
       SNARE_PLT_DEBUG_FIXUPS_MSG(
           "        %-12s %-16s 0x%08llX            rebase  0x%08llX\n",
           snare_plt_segment_name_from_addr(d, entry.offset),
@@ -4318,8 +3895,7 @@ static int snare_plt_read_chained_fixups(snare_plt_data_t *d,
   rv = 0;
 cleanup:
   snare_plt_chained_fixups_iter_deinit(&iter);
-  if (rv != 0 && d->plthook)
-  {
+  if (rv != 0 && d->plthook) {
     free(d->plthook);
     d->plthook = NULL;
   }
@@ -4327,14 +3903,11 @@ cleanup:
 }
 
 static uint8_t *snare_plt_fileoff_to_vmaddr(snare_plt_data_t *d,
-                                            size_t offset)
-{
+                                            size_t offset) {
   int i;
-  for (i = 0; i < d->num_segments; i++)
-  {
+  for (i = 0; i < d->num_segments; i++) {
     const struct segment_command_64 *seg = d->segments[i];
-    if (seg->fileoff <= offset && offset < seg->fileoff + seg->filesize)
-    {
+    if (seg->fileoff <= offset && offset < seg->fileoff + seg->filesize) {
       return snare_plt_fileoff_to_vmaddr_in_segment(d, i, offset);
     }
   }
@@ -4343,14 +3916,11 @@ static uint8_t *snare_plt_fileoff_to_vmaddr(snare_plt_data_t *d,
 
 #ifdef SNARE_PLT_DEBUG_FIXUPS
 static const char *snare_plt_segment_name_from_addr(snare_plt_data_t *d,
-                                                    size_t addr)
-{
+                                                    size_t addr) {
   int i;
-  for (i = 0; i < d->num_segments; i++)
-  {
+  for (i = 0; i < d->num_segments; i++) {
     const struct segment_command_64 *seg = d->segments[i];
-    if (seg->fileoff <= addr && addr < seg->fileoff + seg->filesize)
-    {
+    if (seg->fileoff <= addr && addr < seg->fileoff + seg->filesize) {
       return seg->segname;
     }
   }
@@ -4358,14 +3928,11 @@ static const char *snare_plt_segment_name_from_addr(snare_plt_data_t *d,
 }
 
 static const char *snare_plt_section_name_from_addr(snare_plt_data_t *d,
-                                                    size_t addr)
-{
+                                                    size_t addr) {
   int i;
-  for (i = 0; i < d->num_sections; i++)
-  {
+  for (i = 0; i < d->num_sections; i++) {
     const struct section_64 *sec = d->sections[i];
-    if (sec->offset <= addr && addr < sec->offset + sec->size)
-    {
+    if (sec->offset <= addr && addr < sec->offset + sec->size) {
       return sec->sectname;
     }
   }
@@ -4374,8 +3941,7 @@ static const char *snare_plt_section_name_from_addr(snare_plt_data_t *d,
 #endif
 #endif
 
-static int snare_plt_set_mem_prot(snare_plt_t *plthook)
-{
+static int snare_plt_set_mem_prot(snare_plt_t *plthook) {
   unsigned int pos = 0;
   const char *name;
   void **addr;
@@ -4389,14 +3955,11 @@ static int snare_plt_set_mem_prot(snare_plt_t *plthook)
   memory_object_name_t object = 0;
   int idx = 0;
 
-  while (snare_plt_enum(plthook, &pos, &name, &addr) == 0)
-  {
-    if (start > (size_t)addr)
-    {
+  while (snare_plt_enum(plthook, &pos, &name, &addr) == 0) {
+    if (start > (size_t)addr) {
       start = (size_t)addr;
     }
-    if (end < (size_t)addr)
-    {
+    if (end < (size_t)addr) {
       end = (size_t)addr;
     }
   }
@@ -4404,16 +3967,13 @@ static int snare_plt_set_mem_prot(snare_plt_t *plthook)
 
   while (vm_region_64(task, &vm_addr, &vm_size, VM_REGION_BASIC_INFO_64,
                       (vm_region_info_t)&info, &info_count,
-                      &object) == KERN_SUCCESS)
-  {
+                      &object) == KERN_SUCCESS) {
     snare_plt_mem_prot_t mem_prot = {vm_addr, vm_addr + vm_size,
                                      info.protection &
                                          (PROT_READ | PROT_WRITE | PROT_EXEC)};
-    if (mem_prot.prot != 0 && mem_prot.start < end && start < mem_prot.end)
-    {
+    if (mem_prot.prot != 0 && mem_prot.start < end && start < mem_prot.end) {
       plthook->mem_prot[idx++] = mem_prot;
-      if (idx == SNARE_PLT_NUM_MEM_PROT)
-      {
+      if (idx == SNARE_PLT_NUM_MEM_PROT) {
         break;
       }
     }
@@ -4422,15 +3982,12 @@ static int snare_plt_set_mem_prot(snare_plt_t *plthook)
   return 0;
 }
 
-static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr)
-{
+static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr) {
   snare_plt_mem_prot_t *ptr = plthook->mem_prot;
   snare_plt_mem_prot_t *end = ptr + SNARE_PLT_NUM_MEM_PROT;
 
-  while (ptr < end && ptr->prot != 0)
-  {
-    if (ptr->start <= (size_t)addr && (size_t)addr < ptr->end)
-    {
+  while (ptr < end && ptr->prot != 0) {
+    if (ptr->start <= (size_t)addr && (size_t)addr < ptr->end) {
       return ptr->prot;
     }
     ++ptr;
@@ -4441,12 +3998,10 @@ static int snare_plt_get_mem_prot(snare_plt_t *plthook, void *addr)
 SNARE_EXPORT int SNARE_API snare_plt_enum(snare_plt_t *plthook,
                                           unsigned int *pos,
                                           const char **name_out,
-                                          void ***addr_out)
-{
+                                          void ***addr_out) {
   snare_plt_entry_t entry;
   int rv = snare_plt_enum_entry(plthook, pos, &entry);
-  if (rv == 0)
-  {
+  if (rv == 0) {
     *name_out = entry.name;
     *addr_out = entry.addr;
   }
@@ -4457,16 +4012,13 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
                                                     unsigned int *pos,
                                                     const char **name_out,
                                                     void ***addr_out,
-                                                    int *prot)
-{
+                                                    int *prot) {
   snare_plt_entry_t entry;
   int rv = snare_plt_enum_entry(plthook, pos, &entry);
-  if (rv == 0)
-  {
+  if (rv == 0) {
     *name_out = entry.name;
     *addr_out = entry.addr;
-    if (prot)
-    {
+    if (prot) {
       *prot = entry.prot;
     }
   }
@@ -4475,13 +4027,10 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_with_prot(snare_plt_t *plthook,
 
 SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
                                                 unsigned int *pos,
-                                                snare_plt_entry_t *entry)
-{
+                                                snare_plt_entry_t *entry) {
   memset(entry, 0, sizeof(*entry));
-  while (*pos < plthook->num_entries)
-  {
-    if (strcmp(plthook->entries[*pos].name, "__tlv_bootstrap") == 0)
-    {
+  while (*pos < plthook->num_entries) {
+    if (strcmp(plthook->entries[*pos].name, "__tlv_bootstrap") == 0) {
       (*pos)++;
       continue;
     }
@@ -4498,101 +4047,80 @@ SNARE_EXPORT int SNARE_API snare_plt_enum_entry(snare_plt_t *plthook,
 
 SNARE_EXPORT int SNARE_API snare_plt_replace(snare_plt_t *plthook,
                                              const char *funcname,
-                                             void *funcaddr, void **oldfunc)
-{
+                                             void *funcaddr, void **oldfunc) {
   size_t funcnamelen = strlen(funcname);
   unsigned int pos = 0;
   snare_plt_entry_t entry;
   int rv;
 
-  if (plthook == NULL)
-  {
+  if (plthook == NULL) {
     snare_plt_set_errmsg("invalid argument: The first argument is null.");
     return SNARE_PLT_INVALID_ARGUMENT;
   }
-  while ((rv = snare_plt_enum_entry(plthook, &pos, &entry)) == 0)
-  {
+  while ((rv = snare_plt_enum_entry(plthook, &pos, &entry)) == 0) {
     const char *name = entry.name;
     void **addr = entry.addr;
-    if (strncmp(name, funcname, funcnamelen) == 0)
-    {
-      if (name[funcnamelen] == '\0' || name[funcnamelen] == '$')
-      {
+    if (strncmp(name, funcname, funcnamelen) == 0) {
+      if (name[funcnamelen] == '\0' || name[funcnamelen] == '$') {
         goto matched;
       }
     }
-    if (name[0] == '@')
-    {
+    if (name[0] == '@') {
       /* I doubt this code... */
       name++;
-      if (strncmp(name, funcname, funcnamelen) == 0)
-      {
-        if (name[funcnamelen] == '\0' || name[funcnamelen] == '$')
-        {
+      if (strncmp(name, funcname, funcnamelen) == 0) {
+        if (name[funcnamelen] == '\0' || name[funcnamelen] == '$') {
           goto matched;
         }
       }
     }
-    if (name[0] == '_')
-    {
+    if (name[0] == '_') {
       name++;
-      if (strncmp(name, funcname, funcnamelen) == 0)
-      {
-        if (name[funcnamelen] == '\0' || name[funcnamelen] == '$')
-        {
+      if (strncmp(name, funcname, funcnamelen) == 0) {
+        if (name[funcnamelen] == '\0' || name[funcnamelen] == '$') {
           goto matched;
         }
       }
     }
     continue;
   matched:
-    if (oldfunc)
-    {
+    if (oldfunc) {
       *oldfunc = *addr;
     }
-    if (!(entry.prot & PROT_WRITE))
-    {
+    if (!(entry.prot & PROT_WRITE)) {
       size_t page_size = sysconf(_SC_PAGESIZE);
       void *base = (void *)((size_t)addr & ~(page_size - 1));
-      if (mprotect(base, page_size, PROT_READ | PROT_WRITE) != 0)
-      {
+      if (mprotect(base, page_size, PROT_READ | PROT_WRITE) != 0) {
         snare_plt_set_errmsg("Cannot change memory protection at address %p",
                              base);
         return SNARE_PLT_INTERNAL_ERROR;
       }
       *addr = funcaddr;
       mprotect(base, page_size, entry.prot);
-    }
-    else
-    {
+    } else {
       *addr = funcaddr;
     }
     return 0;
   }
-  if (rv == EOF)
-  {
+  if (rv == EOF) {
     snare_plt_set_errmsg("no such function: %s", funcname);
     rv = SNARE_PLT_FUNCTION_NOT_FOUND;
   }
   return rv;
 }
 
-SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook)
-{
-  if (plthook != NULL)
-  {
+SNARE_EXPORT void SNARE_API snare_plt_close(snare_plt_t *plthook) {
+  if (plthook != NULL) {
     free(plthook);
   }
   return;
 }
 
-SNARE_EXPORT const char *SNARE_API snare_plt_error(void)
-{
+SNARE_EXPORT const char *SNARE_API snare_plt_error(void) {
   return snare_plt_errmsg;
 }
 
-static void snare_plt_set_errmsg(const char *fmt, ...)
-{
+static void snare_plt_set_errmsg(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(snare_plt_errmsg, sizeof(snare_plt_errmsg) - 1, fmt, ap);
