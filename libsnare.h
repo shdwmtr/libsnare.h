@@ -989,6 +989,9 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft) {
   DWORD pid = GetCurrentProcessId();
   DWORD tid = GetCurrentThreadId();
 
+  DWORD *tids = NULL;
+  size_t tid_count = 0, tid_cap = 0;
+
   ft->handles = NULL;
   ft->count = 0;
   ft->capacity = 0;
@@ -1001,32 +1004,44 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft) {
   if (Thread32First(hSnapshot, &te)) {
     do {
       if (te.th32OwnerProcessID == pid && te.th32ThreadID != tid) {
-        HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT |
-                                        THREAD_SET_CONTEXT,
-                                    FALSE, te.th32ThreadID);
-        if (hThread) {
-          if (SuspendThread(hThread) != (DWORD)-1) {
-            if (ft->count >= ft->capacity) {
-              size_t new_cap = ft->capacity ? ft->capacity * 2 : 16;
-              HANDLE *buf =
-                  (HANDLE *)realloc(ft->handles, new_cap * sizeof(HANDLE));
-              if (!buf) {
-                ResumeThread(hThread);
-                CloseHandle(hThread);
-                continue;
-              }
-              ft->handles = buf;
-              ft->capacity = new_cap;
-            }
-            ft->handles[ft->count++] = hThread;
-          } else {
-            CloseHandle(hThread);
-          }
+        if (tid_count >= tid_cap) {
+          size_t new_cap = tid_cap ? tid_cap * 2 : 64;
+          DWORD *buf = (DWORD *)realloc(tids, new_cap * sizeof(DWORD));
+          if (!buf)
+            continue;
+          tids = buf;
+          tid_cap = new_cap;
         }
+        tids[tid_count++] = te.th32ThreadID;
       }
     } while (Thread32Next(hSnapshot, &te));
   }
   CloseHandle(hSnapshot);
+
+  if (!tid_count) {
+    free(tids);
+    return;
+  }
+
+  ft->handles = (HANDLE *)malloc(tid_count * sizeof(HANDLE));
+  if (!ft->handles) {
+    free(tids);
+    return;
+  }
+  ft->capacity = tid_count;
+
+  for (size_t i = 0; i < tid_count; i++) {
+    HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT |
+                                    THREAD_SET_CONTEXT,
+                                FALSE, tids[i]);
+    if (hThread) {
+      if (SuspendThread(hThread) != (DWORD)-1)
+        ft->handles[ft->count++] = hThread;
+      else
+        CloseHandle(hThread);
+    }
+  }
+  free(tids);
 }
 
 static void snare_thaw_threads(snare_frozen_threads_t *ft) {
