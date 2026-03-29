@@ -981,6 +981,7 @@ typedef struct {
   HANDLE *handles;
   size_t count;
   size_t capacity;
+  DWORD *deferred_tids; /* freed in thaw to avoid heap-lock deadlock */
 } snare_frozen_threads_t;
 
 static void snare_freeze_threads(snare_frozen_threads_t *ft) {
@@ -995,6 +996,7 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft) {
   ft->handles = NULL;
   ft->count = 0;
   ft->capacity = 0;
+  ft->deferred_tids = NULL;
 
   hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if (hSnapshot == INVALID_HANDLE_VALUE)
@@ -1041,7 +1043,9 @@ static void snare_freeze_threads(snare_frozen_threads_t *ft) {
         CloseHandle(hThread);
     }
   }
-  free(tids);
+  /* defer free until after thaw. calling free() while threads are suspended
+   * deadlocks if a suspended thread holds the CRT heap lock */
+  ft->deferred_tids = tids;
 }
 
 static void snare_thaw_threads(snare_frozen_threads_t *ft) {
@@ -1051,7 +1055,9 @@ static void snare_thaw_threads(snare_frozen_threads_t *ft) {
     CloseHandle(ft->handles[i]);
   }
   free(ft->handles);
+  free(ft->deferred_tids);
   ft->handles = NULL;
+  ft->deferred_tids = NULL;
   ft->count = 0;
   ft->capacity = 0;
 }
