@@ -269,6 +269,7 @@ private:
 
 #ifdef SNARE_IMPLEMENTATION
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef SNARE_WINDOWS
@@ -734,8 +735,11 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
   while (orig_size < JMP_INSN_LEN) {
     int reloc = 0;
     size_t insn_len = snare_disasm(src + orig_size, &reloc);
-    if (insn_len == 0)
+    if (insn_len == 0) {
+      fprintf(stdout, "[snare] unsupported opcode 0x%02X at %p (src+%zu)\n",
+              (unsigned)(src[orig_size]), (void *)(src + orig_size), orig_size);
       return 0;
+    }
 
     /* record instruction boundary mapping */
     if (hook && hook->n_ips < SNARE_MAX_IPS) {
@@ -784,6 +788,36 @@ static size_t snare_make_trampoline(uint8_t *trampoline, uint8_t *src,
       orig_size += insn_len;
       continue;
     }
+
+#ifndef SNARE_X86_64
+    if (pfx == 0 && op == 0xE8 && insn_len == 5 && reloc == 1) {
+      int32_t call_disp;
+      memcpy(&call_disp, insn + 1, 4);
+      uint8_t *call_tgt = (uint8_t *)((uintptr_t)(src + orig_size + 5) +
+                                      (uintptr_t)(intptr_t)call_disp);
+
+      uint32_t pc_val = (uint32_t)(uintptr_t)(src + orig_size + 5);
+      /* 8B /r 24 C3  ==>  mov r32, [esp]; ret */
+      if (call_tgt[0] == 0x8B && (call_tgt[1] & 0xC7) == 0x04 &&
+          call_tgt[2] == 0x24 && call_tgt[3] == 0xC3) {
+        int reg_idx = (call_tgt[1] >> 3) & 7;
+        trampoline[tramp_size] = (uint8_t)(0xB8 + reg_idx); /* MOV r32, imm32 */
+        memcpy(trampoline + tramp_size + 1, &pc_val, 4);
+        tramp_size += 5;
+        orig_size += 5;
+        continue;
+      }
+      /* (58+r) C3  ==>  pop reg; ret */
+      if (call_tgt[0] >= 0x58 && call_tgt[0] <= 0x5F && call_tgt[1] == 0xC3) {
+        int reg_idx = call_tgt[0] - 0x58;
+        trampoline[tramp_size] = (uint8_t)(0xB8 + reg_idx); /* MOV r32, imm32 */
+        memcpy(trampoline + tramp_size + 1, &pc_val, 4);
+        tramp_size += 5;
+        orig_size += 5;
+        continue;
+      }
+    }
+#endif /* !SNARE_X86_64 */
 
     /* regular instruction copy */
     memcpy(trampoline + tramp_size, insn, insn_len);
@@ -1109,6 +1143,9 @@ static void snare_write_hook_jmp(snare_inline_t hook) {
 SNARE_EXPORT int SNARE_API snare_inline_install(snare_inline_t hook) {
   if (hook->installed)
     return -EINVAL;
+  if (!hook->trampoline) {
+    return -EINVAL;
+  }
 
 #ifdef SNARE_WINDOWS
   snare_frozen_threads_t ft;
